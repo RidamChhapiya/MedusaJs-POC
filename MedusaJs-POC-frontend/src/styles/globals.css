@@ -41,6 +41,20 @@
     transition: background-color 5000s ease-in-out 0s;
   }
 
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover,
+  .dark input:-webkit-autofill:focus,
+  .dark textarea:-webkit-autofill,
+  .dark textarea:-webkit-autofill:hover,
+  .dark textarea:-webkit-autofill:focus,
+  .dark select:-webkit-autofill,
+  .dark select:-webkit-autofill:hover,
+  .dark select:-webkit-autofill:focus {
+    border: 1px solid #9ca3af;
+    -webkit-text-fill-color: #f9fafb;
+    -webkit-box-shadow: 0 0 0px 1000px #1f2937 inset;
+  }
+
   input[type="search"]::-webkit-search-decoration,
   input[type="search"]::-webkit-search-cancel-button,
   input[type="search"]::-webkit-search-results-button,
@@ -52,6 +66,45 @@
 @layer components {
   .content-container {
     @apply max-w-[1440px] w-full mx-auto px-6;
+  }
+
+  /* Global dark mode text colors - fallback for elements without explicit colors */
+  .dark {
+    color: rgb(243, 244, 246); /* grey-10 */
+  }
+
+  /* Prevent flash - immediate background application before React hydrates */
+  html.dark body {
+    background-color: #1F2937 !important; /* grey-80 */
+    transition: none !important;
+  }
+  
+  html:not(.dark) body {
+    background-color: #FFFFFF !important; /* white */
+    transition: none !important;
+  }
+  
+  html.dark main {
+    background-color: #1F2937 !important; /* grey-80 */
+    transition: none !important;
+  }
+  
+  html:not(.dark) main {
+    background-color: #FFFFFF !important; /* white */
+    transition: none !important;
+  }
+  
+  /* Prevent flash on specific page containers */
+  html.dark [data-testid="cart-container"],
+  html.dark [data-testid="category-container"] {
+    background-color: #1F2937 !important;
+    transition: none !important;
+  }
+  
+  html:not(.dark) [data-testid="cart-container"],
+  html:not(.dark) [data-testid="category-container"] {
+    background-color: #FFFFFF !important;
+    transition: none !important;
   }
 
   .contrast-btn {

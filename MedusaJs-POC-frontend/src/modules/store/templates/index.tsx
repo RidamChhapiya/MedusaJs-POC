@@ -20,12 +20,12 @@ const StoreTemplate = ({
 
   return (
     <div
-      className="flex flex-col small:flex-row small:items-start py-6 content-container"
+      className="flex flex-col small:flex-row small:items-start py-6 content-container bg-white dark:bg-grey-80 min-h-screen [transition:background-color_0s]"
       data-testid="category-container"
     >
       <RefinementList sortBy={sort} />
       <div className="w-full">
-        <div className="mb-8 text-2xl-semi">
+        <div className="mb-8 text-2xl-semi text-grey-90 dark:text-grey-10">
           <h1 data-testid="store-page-title">All products</h1>
         </div>
         <Suspense fallback={<SkeletonProductGrid />}>
