@@ -7,6 +7,7 @@ import { StoreRegion } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import CartButton from "@modules/layout/components/cart-button"
 import SideMenu from "@modules/layout/components/side-menu"
+import ThemeToggle from "@modules/common/components/theme-toggle"
 
 export default async function Nav() {
   const [regions, locales, currentLocale] = await Promise.all([
@@ -17,8 +18,8 @@ export default async function Nav() {
 
   return (
     <div className="sticky top-0 inset-x-0 z-50 group">
-      <header className="relative h-16 mx-auto border-b duration-200 bg-white border-ui-border-base">
-        <nav className="content-container txt-xsmall-plus text-ui-fg-subtle flex items-center justify-between w-full h-full text-small-regular">
+      <header className="relative h-16 mx-auto border-b duration-200 bg-white dark:bg-grey-60 border-ui-border-base dark:border-grey-50">
+        <nav className="content-container txt-xsmall-plus text-ui-fg-subtle dark:text-grey-30 flex items-center justify-between w-full h-full text-small-regular">
           <div className="flex-1 basis-0 h-full flex items-center">
             <div className="h-full">
               <SideMenu regions={regions} locales={locales} currentLocale={currentLocale} />
@@ -28,7 +29,7 @@ export default async function Nav() {
           <div className="flex items-center h-full">
             <LocalizedClientLink
               href="/"
-              className="txt-compact-xlarge-plus hover:text-ui-fg-base uppercase"
+              className="txt-compact-xlarge-plus hover:text-ui-fg-base dark:hover:text-grey-10 uppercase text-grey-90 dark:text-grey-10"
               data-testid="nav-store-link"
             >
               Medusa Store
@@ -38,13 +39,14 @@ export default async function Nav() {
           <div className="flex items-center gap-x-6 h-full flex-1 basis-0 justify-end">
             <div className="hidden small:flex items-center gap-x-6 h-full">
               <LocalizedClientLink
-                className="hover:text-ui-fg-base"
+                className="hover:text-ui-fg-base dark:hover:text-grey-10 text-grey-70 dark:text-grey-30"
                 href="/account"
                 data-testid="nav-account-link"
               >
                 Account
               </LocalizedClientLink>
             </div>
+            <ThemeToggle />
             <Suspense
               fallback={
                 <LocalizedClientLink
