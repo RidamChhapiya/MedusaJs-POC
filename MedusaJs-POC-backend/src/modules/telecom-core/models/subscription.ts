@@ -2,16 +2,19 @@ import { model } from "@medusajs/framework/utils"
 
 /**
  * Subscription is the central record of an active telecom line
- * Links to Customer and MsisdnInventory
+ * Links to Customer, Plan, and MSISDN
  */
 const Subscription = model.define("subscription", {
     id: model.id().primaryKey(),
     customer_id: model.text(),
-    status: model.enum(["active", "suspended", "barred"]),
-    msisdn_id: model.text(),
-    current_period_start: model.dateTime(),
-    renewal_date: model.dateTime(),
-    billing_day: model.number(),
+    plan_id: model.text(), // Link to PlanConfiguration
+    msisdn: model.text(), // Phone number
+    status: model.enum(["pending", "active", "suspended", "expired", "cancelled"]),
+    start_date: model.dateTime(),
+    end_date: model.dateTime(),
+    data_balance_mb: model.number(),
+    voice_balance_min: model.number(),
+    auto_renew: model.boolean().default(false),
 })
 
 export default Subscription
