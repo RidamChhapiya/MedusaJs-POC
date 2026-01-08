@@ -97,6 +97,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             // Create new subscription
             subscription = await telecomModule.createSubscriptions({
                 customer_id: msisdn.customer_id,
+                plan_id: plan.id,
                 msisdn: nexel_number,
                 status: "active",
                 start_date: new Date(),

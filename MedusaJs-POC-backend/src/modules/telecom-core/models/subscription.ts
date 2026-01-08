@@ -9,7 +9,7 @@ const Subscription = model.define("subscription", {
     customer_id: model.text(),
     plan_id: model.text(), // Link to PlanConfiguration
     msisdn: model.text(), // Phone number
-    status: model.enum(["active", "suspended", "expired", "cancelled"]),
+    status: model.enum(["pending", "active", "suspended", "expired", "cancelled"]),
     start_date: model.dateTime(),
     end_date: model.dateTime(),
     data_balance_mb: model.number(),

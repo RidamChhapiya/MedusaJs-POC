@@ -22,6 +22,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             plan_id,
             preferred_number, // Optional: customer can choose
             sim_password, // Password for Nexel number login
+            payment_method = "manual"  // Default to manual payment for POC
         } = req.body as any
 
         // Step 1: Validate customer exists
@@ -109,8 +110,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         // Step 6: Create subscription
         const subscription = await telecomModule.createSubscriptions({
             customer_id,
+            plan_id: plan.id,
             msisdn: msisdn.phone_number,
-            status: "active",
+            status: "pending",  // Will be activated after order fulfillment
             start_date: new Date(),
             end_date: new Date(Date.now() + plan.validity_days * 24 * 60 * 60 * 1000),
             data_balance_mb: plan.data_quota_mb,
@@ -118,12 +120,6 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             auto_renew: true,
         })
 
-        // Step 7: Activate MSISDN
-        await telecomModule.updateMsisdnInventories({
-            id: msisdn.id,
-            status: "active",
-            activated_at: new Date(),
-        })
 
         // Step 8: Update customer profile to Nexel subscriber
         const currentNexelNumbers = profile.nexel_numbers || []
@@ -134,14 +130,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         })
 
         // Step 9: Initialize usage counter
+        const currentDate = new Date()
         await telecomModule.createUsageCounters({
             subscription_id: subscription.id,
-            billing_period_start: new Date(),
-            billing_period_end: new Date(Date.now() + plan.validity_days * 24 * 60 * 60 * 1000),
+            period_month: currentDate.getMonth() + 1,
+            period_year: currentDate.getFullYear(),
             data_used_mb: 0,
             voice_used_min: 0,
-            data_quota_mb: plan.data_quota_mb,
-            voice_quota_min: plan.voice_quota_min,
         })
 
         // Step 10: Create invoice (mock payment)
@@ -149,10 +144,19 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             customer_id,
             subscription_id: subscription.id,
             invoice_number: `INV-${Date.now()}`,
+            subtotal: plan.price,
+            tax_amount: 0,
             total_amount: plan.price,
-            status: "paid", // Mock: auto-paid
+            issue_date: new Date(),
             due_date: new Date(),
-            paid_at: new Date(),
+            paid_date: new Date(),
+            status: "paid",
+            line_items: [{
+                description: `${plan.name} - ${plan.validity_days} days`,
+                quantity: 1,
+                unit_price: plan.price,
+                amount: plan.price
+            }]
         })
 
         // Step 11: Create Medusa Order for tracking and fulfillment
@@ -164,20 +168,34 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             if (!plan.product_id) {
                 console.warn("[SIM Purchase] Plan has no product_id, skipping order creation")
             } else {
-                // Get product details
+                // Get product details using list (Medusa v2 API)
                 const productModule = req.scope.resolve("product")
-                const product = await productModule.retrieve(plan.product_id, {
+                const products = await productModule.listProducts({
+                    id: [plan.product_id]
+                }, {
                     relations: ["variants"]
                 })
 
-                const variant = product.variants?.[0]
+                const product = products[0]
+                console.log(`[SIM Purchase] Products found: ${products.length}, Product: ${product?.id}, Variants: ${product?.variants?.length}`)
+                const variant = product?.variants?.[0]
+                if (!variant) console.warn(`[SIM Purchase] No variant found for product ${plan.product_id}`)
 
+                // Get actual region from database
+                const regionModule = req.scope.resolve("region")
+                const regions = await regionModule.listRegions({}, { take: 1 })
+                const region = regions[0]
+                if (!region) {
+                    console.warn("[SIM Purchase] No region found in database, skipping order creation")
+                    return
+                }
+                console.log(`[SIM Purchase] Using region ${region.id}`)
                 if (variant) {
                     // Create order using workflow
                     const { result: orderResult } = await createOrderWorkflow(req.scope).run({
                         input: {
                             customer_id,
-                            region_id: "reg_01HQZV3XFQZQZ0Z0Z0Z0Z0Z0Z0", // TODO: Get from config
+                            region_id: region.id, // TODO: Get from config
                             currency_code: "inr",
                             items: [
                                 {
@@ -195,7 +213,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                                 subscription_id: subscription.id,
                                 msisdn: msisdn.phone_number,
                                 requires_fulfillment: true, // Physical SIM delivery
-                                invoice_id: invoice.id
+                                invoice_id: invoice.id,
+                                payment_method: payment_method,
+                                payment_verified: false,  // Admin needs to verify
+                                sim_activated: false  // Will be true after fulfillment
                             }
                         }
                     })
@@ -214,7 +235,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             message: "SIM purchased successfully!",
             sim: {
                 phone_number: msisdn.phone_number,
-                status: "active",
+                status: "reserved",  // Will be activated after order fulfillment
                 tier: msisdn.tier,
                 region: msisdn.region_code,
             },
@@ -238,9 +259,10 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                 message: "Order created for fulfillment tracking"
             } : null,
             next_steps: [
-                "You can now login with your Nexel number: " + msisdn.phone_number,
+                "Your order has been placed successfully",
                 "Your SIM will be delivered to your registered address",
-                "Activate your SIM using the password you set"
+                "Once delivered and activated, you can login with: " + msisdn.phone_number,
+                "Payment verification and fulfillment pending"
             ]
         })
 
