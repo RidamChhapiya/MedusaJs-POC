@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
+import MsisdnInventory from "../../../../modules/telecom-core/models/msisdn-inventory"
 
 /**
  * SIM Purchase API
@@ -22,9 +23,23 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             plan_id,
             preferred_number, // Optional: customer can choose
             sim_password, // Password for Nexel number login
-            payment_method = "manual"  // Default to manual payment for POC
+            payment_method = "manual",  // Default to manual payment for POC
+            // Shipping address for physical SIM delivery
+            shipping_address,
+            shipping_city,
+            shipping_state,
+            shipping_pincode,
+            shipping_landmark
         } = req.body as any
 
+
+        // Validate shipping address
+        if (!shipping_address || !shipping_city || !shipping_state || !shipping_pincode) {
+            return res.status(400).json({
+                error: "Shipping address is required for SIM delivery",
+                required_fields: ["shipping_address", "shipping_city", "shipping_state", "shipping_pincode"]
+            })
+        }
         // Step 1: Validate customer exists
         const profiles = await telecomModule.listCustomerProfiles({
             customer_id
@@ -62,7 +77,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         const plan = plans[0]
 
         // Step 4: Find available MSISDN
-        let msisdn = null
+        let msisdn: Awaited<ReturnType<typeof telecomModule.listMsisdnInventories>>[number] | null = null
 
         if (preferred_number) {
             // Check if preferred number is available
@@ -95,17 +110,31 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             msisdn = available[0]
         }
 
+        // Ensure MSISDN was found (TypeScript null safety)
+        if (!msisdn) {
+            return res.status(500).json({
+                error: "Failed to assign MSISDN",
+                message: "An unexpected error occurred while assigning a phone number."
+            })
+        }
+
         // Step 5: Reserve MSISDN (15 min expiry)
         const reservationExpiry = new Date()
         reservationExpiry.setMinutes(reservationExpiry.getMinutes() + 15)
 
-        await telecomModule.updateMsisdnInventories({
+        console.log(`[SIM Purchase] Updating MSISDN ${msisdn.phone_number} to reserved status...`)
+        console.log(`[SIM Purchase] Current MSISDN status: ${msisdn.status}`)
+
+        const updatedMsisdn = await telecomModule.updateMsisdnInventories({
             id: msisdn.id,
             status: "reserved",
             customer_id,
             reserved_at: new Date(),
             reservation_expires_at: reservationExpiry,
         })
+
+        console.log(`[SIM Purchase] MSISDN update result:`, updatedMsisdn)
+        console.log(`[SIM Purchase] MSISDN ${msisdn.phone_number} status after update: ${updatedMsisdn.status}`)
 
         // Step 6: Create subscription
         const subscription = await telecomModule.createSubscriptions({
@@ -120,6 +149,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             auto_renew: true,
         })
 
+        // Step 7: Keep MSISDN reserved until fulfillment
+        // MSISDN will be activated when admin fulfills the order
+        // No action needed here - stays in 'reserved' status
 
         // Step 8: Update customer profile to Nexel subscriber
         const currentNexelNumbers = profile.nexel_numbers || []
@@ -190,6 +222,39 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                     return
                 }
                 console.log(`[SIM Purchase] Using region ${region.id}`)
+
+                // Get SIM product variant based on MSISDN tier
+                const simProductId = process.env.SIM_PRODUCT_ID
+                let simVariant = null
+
+                if (simProductId) {
+                    const simProducts = await productModule.listProducts({
+                        id: [simProductId]
+                    }, {
+                        relations: ["variants", "variants.options"]
+                    })
+
+                    const simProduct = simProducts[0]
+                    if (simProduct && simProduct.variants) {
+                        // Find variant matching MSISDN tier
+                        simVariant = simProduct.variants.find((v: any) => {
+                            const tierValue = v.title?.toLowerCase().includes(msisdn.tier.toLowerCase())
+                            return tierValue
+                        })
+
+                        if (!simVariant) {
+                            // Fallback to first variant
+                            simVariant = simProduct.variants[0]
+                        }
+
+                        console.log(`[SIM Purchase] Using SIM variant: ${simVariant.title} for tier ${msisdn.tier}`)
+                    } else {
+                        console.warn(`[SIM Purchase] SIM product ${simProductId} not found or has no variants`)
+                    }
+                } else {
+                    console.warn("[SIM Purchase] SIM_PRODUCT_ID not configured, order will only include plan")
+                }
+
                 if (variant) {
                     // Create order using workflow
                     const { result: orderResult } = await createOrderWorkflow(req.scope).run({
@@ -198,13 +263,29 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                             region_id: region.id, // TODO: Get from config
                             currency_code: "inr",
                             items: [
+                                // SIM Card item (if SIM product configured)
+                                ...(simVariant ? [{
+                                    variant_id: simVariant.id,
+                                    quantity: 1,
+                                    unit_price: 0,  // SIM is free
+                                    title: `${msisdn.tier} SIM Card - ${msisdn.phone_number}`,
+                                    metadata: {
+                                        msisdn: msisdn.phone_number,
+                                        item_type: "sim_card",
+                                        tier: msisdn.tier
+                                    }
+                                }] : []),
+                                // Plan item
                                 {
                                     variant_id: variant.id,
                                     quantity: 1,
+                                    unit_price: plan.price,  // Price in paise
+                                    title: plan.name,
                                     metadata: {
                                         subscription_id: subscription.id,
                                         msisdn: msisdn.phone_number,
-                                        item_type: "plan"
+                                        item_type: "plan",
+                                        validity_days: plan.validity_days
                                     }
                                 }
                             ],
@@ -216,13 +297,81 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                                 invoice_id: invoice.id,
                                 payment_method: payment_method,
                                 payment_verified: false,  // Admin needs to verify
-                                sim_activated: false  // Will be true after fulfillment
+                                sim_activated: false,  // Will be true after fulfillment
+                                shipping_address: {
+                                    address: shipping_address,
+                                    city: shipping_city,
+                                    state: shipping_state,
+                                    pincode: shipping_pincode,
+                                    landmark: shipping_landmark
+                                }
                             }
                         }
                     })
 
                     order = orderResult
                     console.log(`[SIM Purchase] Created order ${order.id} for subscription ${subscription.id}`)
+
+                    // Create payment collection and capture for manual payment
+                    if (payment_method === "manual" && order) {
+                        try {
+                            console.log(`[SIM Purchase] Creating payment collection for order ${order.id}`)
+
+                            // Step 1: Get payment module and create payment collection
+                            const paymentModule = req.scope.resolve("payment")
+
+                            const paymentCollection = await paymentModule.createPaymentCollections({
+                                region_id: region.id,
+                                currency_code: "inr",
+                                amount: plan.price,  // Amount in rupees (Medusa v2)
+                                metadata: {
+                                    order_id: order.id,
+                                    subscription_id: subscription.id,
+                                    payment_method: "manual"
+                                }
+                            })
+
+                            console.log(`[SIM Purchase] Payment collection created: ${paymentCollection.id}`)
+
+                            // Step 2: Create payment session for pp_system (manual payment provider)
+                            const paymentSession = await paymentModule.createPaymentSession(paymentCollection.id, {
+                                provider_id: "pp_system",  // Manual payment provider
+                                amount: plan.price,
+                                currency_code: "inr",
+                                data: {
+                                    order_id: order.id
+                                }
+                            })
+
+                            console.log(`[SIM Purchase] Payment session created: ${paymentSession.id}`)
+
+                            // Step 3: Authorize the payment session (creates Payment record)
+                            await paymentModule.authorizePaymentSession(paymentSession.id, {})
+                            console.log(`[SIM Purchase] Payment session authorized`)
+
+                            // Step 4: Get the created payment
+                            const payments = await paymentModule.listPayments({
+                                payment_collection_id: [paymentCollection.id]
+                            })
+
+                            if (payments.length > 0) {
+                                const payment = payments[0]
+                                console.log(`[SIM Purchase] Payment found: ${payment.id}`)
+
+                                // Step 5: Capture the payment (mark as PAID)
+                                await paymentModule.capturePayment({
+                                    payment_id: payment.id
+                                })
+
+                                console.log(`[SIM Purchase] ✅ Payment captured - Order ${order.id} marked as PAID`)
+                            }
+
+                        } catch (paymentError) {
+                            console.error("[SIM Purchase] Payment processing failed:", paymentError)
+                            console.error("[SIM Purchase] Error details:", JSON.stringify(paymentError, null, 2))
+                            // Don't fail the purchase - admin can manually process payment later
+                        }
+                    }
                 }
             }
         } catch (orderError) {
@@ -235,12 +384,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             message: "SIM purchased successfully!",
             sim: {
                 phone_number: msisdn.phone_number,
-                status: "reserved",  // Will be activated after order fulfillment
+                status: "reserved",  // Reserved until fulfillment
                 tier: msisdn.tier,
                 region: msisdn.region_code,
             },
             subscription: {
                 id: subscription.id,
+                status: "pending",  // Pending until fulfillment
                 plan_name: plan.name,
                 start_date: subscription.start_date,
                 end_date: subscription.end_date,
@@ -250,19 +400,21 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             invoice: {
                 id: invoice.id,
                 invoice_number: invoice.invoice_number,
-                amount: invoice.total_amount,
+                amount: invoice.total_amount,  // Convert paise to rupees
+                currency: "INR",
                 status: invoice.status,
             },
             order: order ? {
                 id: order.id,
-                status: order.status,
-                message: "Order created for fulfillment tracking"
+                status: "pending",  // Awaiting payment
+                message: "Order placed - awaiting payment and fulfillment"
             } : null,
             next_steps: [
-                "Your order has been placed successfully",
-                "Your SIM will be delivered to your registered address",
-                "Once delivered and activated, you can login with: " + msisdn.phone_number,
-                "Payment verification and fulfillment pending"
+                "📦 Your SIM purchase order has been placed!",
+                "💳 Payment: ₹" + (plan.price) + " (" + payment_method + ")",
+                "📍 Delivery to: " + shipping_city + ", " + shipping_state,
+                "⏳ Your SIM will be activated after delivery confirmation",
+                "📞 Reserved number: " + msisdn.phone_number
             ]
         })
 

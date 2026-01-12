@@ -52,7 +52,7 @@ const PlanCatalogPage = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...formData,
-                    price: parseInt(formData.price) * 100, // Convert to paise
+                    price: parseInt(formData.price), // Store in rupees (Medusa v2)
                     data_quota_mb: parseFloat(formData.data_quota_gb) * 1024, // Convert GB to MB
                     voice_quota_min: voiceQuota,
                     validity_days: parseInt(formData.validity_days)
@@ -93,7 +93,7 @@ const PlanCatalogPage = () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     ...formData,
-                    price: parseInt(formData.price) * 100,
+                    price: parseInt(formData.price), // Store in rupees (Medusa v2)
                     data_quota_mb: parseFloat(formData.data_quota_gb) * 1024, // Convert GB to MB
                     voice_quota_min: voiceQuota,
                     validity_days: parseInt(formData.validity_days)
@@ -134,7 +134,7 @@ const PlanCatalogPage = () => {
         setFormData({
             name: plan.name,
             description: plan.description || "",
-            price: (plan.price / 100).toString(),
+            price: plan.price.toString(), // Already in rupees
             data_quota_gb: (plan.data_quota_mb / 1024).toString(), // Convert MB to GB
             voice_quota_type: isUnlimited ? "unlimited" : "custom",
             voice_quota_min: isUnlimited ? "" : plan.voice_quota_min.toString(),
@@ -214,7 +214,7 @@ const PlanCatalogPage = () => {
                 <Container className="p-4">
                     <div className="text-sm text-ui-fg-subtle mb-1">Total Revenue</div>
                     <div className="text-2xl font-bold text-ui-tag-green-text">
-                        ₹{(summary.total_revenue / 100).toLocaleString()}
+                        ₹{summary.total_revenue.toLocaleString()} {/* Already in rupees */}
                     </div>
                 </Container>
             </div>
@@ -582,7 +582,7 @@ const PlanCard = ({ plan, onEdit, onToggleActive, onDelete }: any) => {
                 {/* Price */}
                 <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-bold text-ui-fg-base">
-                        ₹{(plan.price / 100).toFixed(0)}
+                        ₹{plan.price.toFixed(0)} {/* Already in rupees */}
                     </span>
                     <span className="text-sm text-ui-fg-subtle">/ {plan.validity_days} days</span>
                 </div>
