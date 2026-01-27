@@ -137,8 +137,8 @@ export async function addToCart({
     ...(await getAuthHeaders()),
   }
 
-  await sdk.store.cart
-    .createLineItem(
+  try {
+    await sdk.store.cart.createLineItem(
       cart.id,
       {
         variant_id: variantId,
@@ -147,14 +147,29 @@ export async function addToCart({
       {},
       headers
     )
-    .then(async () => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag)
+    
+    const cartCacheTag = await getCacheTag("carts")
+    revalidateTag(cartCacheTag)
 
-      const fulfillmentCacheTag = await getCacheTag("fulfillment")
-      revalidateTag(fulfillmentCacheTag)
-    })
-    .catch(medusaError)
+    const fulfillmentCacheTag = await getCacheTag("fulfillment")
+    revalidateTag(fulfillmentCacheTag)
+  } catch (error: any) {
+    const errorDetails: Record<string, any> = {
+      error,
+      errorType: typeof error,
+      cartId: cart.id,
+      variantId,
+      quantity,
+    }
+    
+    if (error && typeof error === 'object') {
+      if ('message' in error) errorDetails.errorMessage = error.message
+      if ('stack' in error) errorDetails.errorStack = error.stack
+    }
+    
+    console.error("[addToCart] Error details:", errorDetails)
+    medusaError(error)
+  }
 }
 
 export async function updateLineItem({

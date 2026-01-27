@@ -38,7 +38,13 @@ export default async function RelatedProducts({
     countryCode,
   }).then(({ response }) => {
     return response.products.filter(
-      (responseProduct) => responseProduct.id !== product.id
+      (responseProduct) => {
+        const isSelf = responseProduct.id === product.id
+        const isPlanOrSim = responseProduct.categories?.some(
+          (c) => c.handle === "plans" || c.handle === "nexel-sim-card"
+        )
+        return !isSelf && !isPlanOrSim
+      }
     )
   })
 

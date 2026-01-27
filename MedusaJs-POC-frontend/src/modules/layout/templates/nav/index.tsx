@@ -26,14 +26,42 @@ export default async function Nav() {
             </div>
           </div>
 
+
           <div className="flex items-center h-full">
             <LocalizedClientLink
               href="/"
-              className="txt-compact-xlarge-plus hover:text-ui-fg-base dark:hover:text-grey-10 uppercase text-grey-90 dark:text-grey-10"
+              className="txt-compact-xlarge-plus hover:text-ui-fg-base dark:hover:text-grey-10 uppercase text-grey-90 dark:text-grey-10 mr-8"
               data-testid="nav-store-link"
             >
-              Medusa Store
+              Medusa Telecom
             </LocalizedClientLink>
+
+            <div className="hidden small:flex items-center gap-x-6 h-full">
+              <LocalizedClientLink
+                className="hover:text-ui-fg-base dark:hover:text-grey-10 text-grey-70 dark:text-grey-30 font-medium"
+                href="/buy-sim"
+              >
+                Get Connected
+              </LocalizedClientLink>
+              <LocalizedClientLink
+                className="hover:text-ui-fg-base dark:hover:text-grey-10 text-grey-70 dark:text-grey-30 font-medium"
+                href="/recharge"
+              >
+                Instant Recharge
+              </LocalizedClientLink>
+              <LocalizedClientLink
+                className="hover:text-ui-fg-base dark:hover:text-grey-10 text-grey-70 dark:text-grey-30 font-medium"
+                href="/store"
+              >
+                Gear
+              </LocalizedClientLink>
+              <LocalizedClientLink
+                className="hover:text-ui-fg-base dark:hover:text-grey-10 text-grey-70 dark:text-grey-30 font-medium"
+                href="/business"
+              >
+                Business
+              </LocalizedClientLink>
+            </div>
           </div>
 
           <div className="flex items-center gap-x-6 h-full flex-1 basis-0 justify-end">
@@ -43,7 +71,7 @@ export default async function Nav() {
                 href="/account"
                 data-testid="nav-account-link"
               >
-                Account
+                My Hub
               </LocalizedClientLink>
             </div>
             <ThemeToggle />

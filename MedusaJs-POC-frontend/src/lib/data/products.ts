@@ -51,6 +51,10 @@ export const listProducts = async ({
 
   const next = {
     ...(await getCacheOptions("products")),
+    tags: ["products"], // Add cache tag for revalidation
+    // Revalidate every 30 seconds - balances freshness with performance
+    // This means: cache for 30 seconds, then fetch fresh data on next request
+    revalidate: 30,
   }
 
   return sdk.client
@@ -63,12 +67,14 @@ export const listProducts = async ({
           offset,
           region_id: region?.id,
           fields:
-            "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags,",
+            "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags,*categories",
           ...queryParams,
         },
         headers,
         next,
-        cache: "force-cache",
+        // Using revalidate: 30 means cache for 30 seconds, then refresh
+        // This is better than "no-store" (always fetch) or "force-cache" (never refresh)
+        cache: "force-cache", // Cache the response, but revalidate based on 'revalidate' setting above
       }
     )
     .then(({ products, count }) => {

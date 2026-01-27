@@ -38,6 +38,8 @@ export const listOrders = async (
     ...(await getAuthHeaders()),
   }
 
+  console.log("[ListOrders] Fetching orders with headers:", JSON.stringify(headers, null, 2))
+
   const next = {
     ...(await getCacheOptions("orders")),
   }
@@ -54,10 +56,16 @@ export const listOrders = async (
       },
       headers,
       next,
-      cache: "force-cache",
+      cache: "no-cache", // Force fresh fetch for debugging
     })
-    .then(({ orders }) => orders)
-    .catch((err) => medusaError(err))
+    .then(({ orders }) => {
+      console.log(`[ListOrders] Fetched ${orders.length} orders`)
+      return orders
+    })
+    .catch((err) => {
+      console.error("[ListOrders] Error fetching orders:", err)
+      return medusaError(err)
+    })
 }
 
 export const createTransferRequest = async (

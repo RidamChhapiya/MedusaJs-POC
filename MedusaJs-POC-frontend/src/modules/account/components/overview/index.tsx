@@ -1,4 +1,7 @@
-import { Container } from "@medusajs/ui"
+"use client"
+
+import { Container, Badge } from "@medusajs/ui"
+import { useCustomerDashboard, useCustomerSubscriptions, useCustomerUsage } from "@lib/hooks/use-telecom"
 
 import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -11,9 +14,78 @@ type OverviewProps = {
 }
 
 const Overview = ({ customer, orders }: OverviewProps) => {
+  // Fetch Telecom Data
+  // We use customer ID if available, otherwise it might skip.
+  const { data: dashboard } = useCustomerDashboard(customer?.id)
+  const { data: subscriptions } = useCustomerSubscriptions(customer?.id)
+  const { data: usage } = useCustomerUsage(customer?.id)
+  // Mock data for usage chart visualization if needed, or simple progress bar
+
   return (
     <div data-testid="overview-page-wrapper">
       <div className="hidden small:block">
+
+        {/* Telecom Dashboard Section */}
+        {dashboard && (
+          <div className="mb-12 border-b pb-8">
+            <h2 className="text-xl font-bold mb-6">My Hub</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {/* Balance Card */}
+              <Container className="p-6 bg-ui-bg-base shadow-sm">
+                <div className="text-ui-fg-subtle text-sm mb-2">Current Balance</div>
+                <div className="text-3xl font-bold mb-2">
+                  {convertToLocale({ amount: dashboard.balance, currency_code: dashboard.currency_code })}
+                </div>
+                <LocalizedClientLink href="/recharge">
+                  <Badge color="green" className="cursor-pointer">Top Up Now &rarr;</Badge>
+                </LocalizedClientLink>
+              </Container>
+
+              {/* Data Usage */}
+              <Container className="p-6 bg-ui-bg-base shadow-sm">
+                <div className="text-ui-fg-subtle text-sm mb-2">Data Remaining</div>
+                <div className="text-3xl font-bold mb-2">{dashboard.data_left} GB</div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                  <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: '45%' }}></div>
+                </div>
+                <div className="text-xs text-right mt-1 text-ui-fg-subtle">45% used</div>
+              </Container>
+
+              {/* Voice/SMS */}
+              <Container className="p-6 bg-ui-bg-base shadow-sm">
+                <div className="text-ui-fg-subtle text-sm mb-2">Voice & SMS</div>
+                <div className="flex justify-between items-center mb-1">
+                  <span>Voice</span>
+                  <span className="font-bold">{dashboard.voice_left} Min</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span>SMS</span>
+                  <span className="font-bold">{dashboard.sms_left}</span>
+                </div>
+              </Container>
+            </div>
+
+            {/* Active Plans */}
+            {subscriptions && subscriptions.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-4">Active Plan</h3>
+                <div className="border rounded-lg p-4 flex justify-between items-center bg-gray-50">
+                  <div>
+                    <div className="font-bold text-lg">{subscriptions[0].plan.name}</div>
+                    <div className="text-sm text-ui-fg-subtle">
+                      Expires on {new Date(subscriptions[0].end_date).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <Badge color={subscriptions[0].status === "active" ? "green" : "red"}>
+                    {subscriptions[0].status}
+                  </Badge>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+
         <div className="text-xl-semi flex justify-between items-center mb-4">
           <span data-testid="welcome-message" data-value={customer?.first_name}>
             Hello {customer?.first_name}
