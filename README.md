@@ -42,3 +42,4 @@ Frontend runs on `http://localhost:8000`
 
 Each project has its own `.env` file. See individual project READMEs for configuration details.
 
+Postman: https://orange-equinox-193831.postman.co/workspace/24318d3e-cb43-4d5b-a4c0-dfd56a07ca62

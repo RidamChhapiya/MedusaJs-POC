@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { useRecharge, usePlans } from "@lib/hooks/use-telecom"
 import { Plan } from "types/telecom" // Fixed import path
 import { convertToLocale } from "@lib/util/money"
@@ -8,8 +9,17 @@ import { Button, Input, Label } from "@medusajs/ui"
 import Spinner from "@modules/common/icons/spinner"
 
 export default function RechargePage() {
+    const searchParams = useSearchParams()
+    const numberFromQuery = searchParams.get("number") ?? ""
     const [phone, setPhone] = useState("")
     const [step, setStep] = useState<"phone" | "plan" | "success">("phone")
+
+    useEffect(() => {
+        if (numberFromQuery && numberFromQuery.length > 0) {
+            setPhone(numberFromQuery)
+            if (numberFromQuery.length > 5) setStep("plan")
+        }
+    }, [numberFromQuery])
     const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
 
     const { data: plans, isLoading: isLoadingPlans } = usePlans()

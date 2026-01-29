@@ -22,6 +22,24 @@ export interface CustomerDashboard {
     voice_left: number
     sms_left: number
     currency_code: string
+    /** Data left in MB (for "X GB left" display) */
+    data_left_mb?: number
+    /** This month total spent (in paise/cents) */
+    spending_this_month?: number
+    /** Last month total spent (in paise/cents) */
+    spending_last_month?: number
+    /** Last 6 months spending: { month: "YYYY-MM", amount } */
+    spending_by_month?: { month: string; amount: number }[]
+    /** Current plans with balance details (from dashboard) */
+    current_plans?: Array<{
+        msisdn: string
+        plan_name: string
+        end_date: string
+        days_remaining: number
+        data_balance: { remaining_mb: number; total_mb: number; percentage: number }
+        voice_balance: { remaining_min: number; total_min: number; is_unlimited: boolean }
+    }>
+    recharge_history?: Array<{ date: string; amount: number; plan_name: string }>
 }
 
 export interface UsageAnalytics {
@@ -33,10 +51,25 @@ export interface UsageAnalytics {
 
 export interface Subscription {
     id: string
+    msisdn?: string
     plan: Plan
     start_date: string
     end_date: string
-    status: "active" | "expired"
+    status: "active" | "expired" | "pending" | "suspended" | "cancelled"
+    /** Data balance remaining (MB) */
+    data_balance_mb?: number
+    /** Voice balance remaining (minutes) */
+    voice_balance_min?: number
+    /** Plan data quota (MB) */
+    data_quota_mb?: number
+    /** Plan voice quota (minutes); 999999 = unlimited */
+    voice_quota_min?: number
+    /** Plan validity in days */
+    validity_days?: number
+    auto_renew?: boolean
+    can_suspend?: boolean
+    can_resume?: boolean
+    can_cancel?: boolean
 }
 
 export interface KycStatus {

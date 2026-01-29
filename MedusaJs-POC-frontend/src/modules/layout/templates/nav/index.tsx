@@ -7,6 +7,7 @@ import { StoreRegion } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import CartButton from "@modules/layout/components/cart-button"
 import SideMenu from "@modules/layout/components/side-menu"
+import NavCountrySelect from "@modules/layout/components/nav-country-select"
 import ThemeToggle from "@modules/common/components/theme-toggle"
 
 export default async function Nav() {
@@ -20,7 +21,10 @@ export default async function Nav() {
     <div className="sticky top-0 inset-x-0 z-50 group">
       <header className="relative h-16 mx-auto border-b duration-200 bg-white dark:bg-grey-60 border-ui-border-base dark:border-grey-50">
         <nav className="content-container txt-xsmall-plus text-ui-fg-subtle dark:text-grey-30 flex items-center justify-between w-full h-full text-small-regular">
-          <div className="flex-1 basis-0 h-full flex items-center">
+          <div className="flex-1 basis-0 h-full flex items-center gap-x-6">
+            <div className="hidden small:flex items-center h-full">
+              <NavCountrySelect regions={regions} />
+            </div>
             <div className="h-full">
               <SideMenu regions={regions} locales={locales} currentLocale={currentLocale} />
             </div>
@@ -67,11 +71,18 @@ export default async function Nav() {
           <div className="flex items-center gap-x-6 h-full flex-1 basis-0 justify-end">
             <div className="hidden small:flex items-center gap-x-6 h-full">
               <LocalizedClientLink
-                className="hover:text-ui-fg-base dark:hover:text-grey-10 text-grey-70 dark:text-grey-30"
+                className="hover:text-ui-fg-base dark:hover:text-grey-10 text-grey-70 dark:text-grey-30 font-medium"
                 href="/account"
-                data-testid="nav-account-link"
+                data-testid="nav-my-hub-link"
               >
                 My Hub
+              </LocalizedClientLink>
+              <LocalizedClientLink
+                className="hover:text-ui-fg-base dark:hover:text-grey-10 text-grey-70 dark:text-grey-30 font-medium"
+                href="/my-numbers"
+                data-testid="nav-my-numbers-link"
+              >
+                My numbers
               </LocalizedClientLink>
             </div>
             <ThemeToggle />

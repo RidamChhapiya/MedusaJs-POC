@@ -66,28 +66,35 @@ export const useCustomerDashboard = (customerId?: string) => {
     return useQuery<CustomerDashboard>({
         queryKey: [...QUERY_KEYS.DASHBOARD, customerId],
         queryFn: async () => {
-            const response = await telecomClient.get<any>("/store/customer/dashboard")
+            const response = await telecomClient.get<any>(
+                `/store/customer/dashboard?customer_id=${encodeURIComponent(customerId ?? "")}`
+            )
 
-            // Map backend response to CustomerDashboard interface
-            // Aggregate totals from all active plans
             let totalDataLeft = 0
             let totalVoiceLeft = 0
-            let totalSmsLeft = 0
-
             if (response.current_plans && Array.isArray(response.current_plans)) {
                 response.current_plans.forEach((plan: any) => {
                     totalDataLeft += plan.data_balance?.remaining_mb || 0
                     totalVoiceLeft += plan.voice_balance?.remaining_min || 0
-                    // SMS balance calculation if available
                 })
             }
 
             return {
-                balance: 0, // Backend doesn't return monetary balance yet
-                data_left: Math.round(totalDataLeft / 1024), // Convert MB to GB
+                balance: 0,
+                data_left: Math.round(totalDataLeft / 1024),
+                data_left_mb: totalDataLeft,
                 voice_left: totalVoiceLeft,
-                sms_left: 100, // Mock for now
-                currency_code: "usd" // Default
+                sms_left: 100,
+                currency_code: "inr",
+                spending_this_month: response.analytics?.spending_this_month,
+                spending_last_month: response.analytics?.spending_last_month,
+                spending_by_month: response.analytics?.spending_by_month,
+                current_plans: response.current_plans,
+                recharge_history: response.recharge_history?.map((r: any) => ({
+                    date: r.date,
+                    amount: r.amount,
+                    plan_name: r.plan_name
+                }))
             }
         },
         enabled: !!customerId,
@@ -108,21 +115,31 @@ export const useCustomerSubscriptions = (customerId?: string) => {
         queryFn: async () => {
             const response = await telecomClient.get<{ subscriptions: any[] }>(`/store/customer/subscriptions/${customerId}`)
 
-            return response.subscriptions.map(sub => ({
+            return response.subscriptions.map((sub: any) => ({
                 id: sub.id,
+                msisdn: sub.msisdn,
                 plan: {
-                    id: "unknown", // not returned by API
+                    id: "unknown",
                     name: sub.plan_name,
                     price: 0,
-                    data_limit: 0,
-                    voice_limit: 0,
+                    data_limit: sub.data_quota_mb != null ? Math.round(sub.data_quota_mb / 1024) : 0,
+                    voice_limit: sub.voice_quota_min ?? 0,
                     sms_limit: 0,
-                    duration: 30,
+                    duration: sub.validity_days ?? 30,
                     type: "prepaid"
                 },
                 start_date: sub.start_date,
                 end_date: sub.end_date,
-                status: sub.status === "active" ? "active" : "expired" // Simplify status mapping
+                status: sub.status,
+                data_balance_mb: sub.data_balance_mb,
+                voice_balance_min: sub.voice_balance_min,
+                data_quota_mb: sub.data_quota_mb,
+                voice_quota_min: sub.voice_quota_min,
+                validity_days: sub.validity_days,
+                auto_renew: sub.auto_renew,
+                can_suspend: sub.can_suspend,
+                can_resume: sub.can_resume,
+                can_cancel: sub.can_cancel,
             }))
         },
         enabled: !!customerId,

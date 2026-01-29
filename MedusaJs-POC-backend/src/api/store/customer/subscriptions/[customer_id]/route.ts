@@ -41,7 +41,13 @@ export async function GET(
                     end_date: sub.end_date,
                     can_suspend: sub.status === "active",
                     can_resume: sub.status === "suspended",
-                    can_cancel: ["active", "suspended"].includes(sub.status)
+                    can_cancel: ["active", "suspended"].includes(sub.status),
+                    // Balance and plan quotas for "My numbers" / usage display
+                    data_balance_mb: sub.data_balance_mb ?? 0,
+                    voice_balance_min: sub.voice_balance_min ?? 0,
+                    data_quota_mb: plan?.data_quota_mb ?? 0,
+                    voice_quota_min: plan?.voice_quota_min ?? 0,
+                    validity_days: plan?.validity_days ?? 0,
                 }
             })
         )
