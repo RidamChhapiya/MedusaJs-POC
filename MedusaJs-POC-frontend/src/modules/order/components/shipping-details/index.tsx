@@ -1,71 +1,67 @@
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
-import { Heading, Text } from "@medusajs/ui"
-
-import Divider from "@modules/common/components/divider"
+import { Text } from "@medusajs/ui"
 
 type ShippingDetailsProps = {
   order: HttpTypes.StoreOrder
 }
 
 const ShippingDetails = ({ order }: ShippingDetailsProps) => {
+  const address = order.shipping_address
+  const shippingMethod = (order.shipping_methods ?? [])[0]
+  const hasAddress = address?.address_1 || address?.city || address?.postal_code
+
   return (
-    <div>
-      <Heading level="h2" className="flex flex-row text-3xl-regular my-6">
-        Delivery
-      </Heading>
-      <div className="flex items-start gap-x-8">
-        <div
-          className="flex flex-col w-1/3"
-          data-testid="shipping-address-summary"
-        >
-          <Text className="txt-medium-plus text-ui-fg-base mb-1">
-            Shipping Address
-          </Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {order.shipping_address?.first_name}{" "}
-            {order.shipping_address?.last_name}
-          </Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {order.shipping_address?.address_1}{" "}
-            {order.shipping_address?.address_2}
-          </Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {order.shipping_address?.postal_code},{" "}
-            {order.shipping_address?.city}
-          </Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {order.shipping_address?.country_code?.toUpperCase()}
-          </Text>
+    <div className="rounded-xl border border-ui-border-base bg-ui-bg-subtle/50 p-5">
+      <h3 className="text-base font-semibold text-ui-fg-base mb-4">Delivery</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 text-sm">
+        <div data-testid="shipping-address-summary">
+          <p className="text-ui-fg-muted font-medium mb-2">Shipping address</p>
+          {hasAddress ? (
+            <div className="text-ui-fg-base space-y-0.5">
+              <p>
+                {address?.first_name} {address?.last_name}
+              </p>
+              {address?.address_1 && <p>{address.address_1}</p>}
+              {address?.address_2 && <p>{address.address_2}</p>}
+              <p>
+                {[address?.postal_code, address?.city].filter(Boolean).join(", ")}
+                {address?.province && `, ${address.province}`}
+              </p>
+              {address?.country_code && (
+                <p className="uppercase">{address.country_code}</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-ui-fg-muted">—</p>
+          )}
         </div>
 
-        <div
-          className="flex flex-col w-1/3 "
-          data-testid="shipping-contact-summary"
-        >
-          <Text className="txt-medium-plus text-ui-fg-base mb-1">Contact</Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {order.shipping_address?.phone}
-          </Text>
-          <Text className="txt-medium text-ui-fg-subtle">{order.email}</Text>
+        <div data-testid="shipping-contact-summary">
+          <p className="text-ui-fg-muted font-medium mb-2">Contact</p>
+          <div className="text-ui-fg-base space-y-0.5">
+            {address?.phone ? <p>{address.phone}</p> : null}
+            <p>{order.email ?? "—"}</p>
+          </div>
         </div>
 
-        <div
-          className="flex flex-col w-1/3"
-          data-testid="shipping-method-summary"
-        >
-          <Text className="txt-medium-plus text-ui-fg-base mb-1">Method</Text>
-          <Text className="txt-medium text-ui-fg-subtle">
-            {(order as any).shipping_methods?.[0]?.name} (
-            {convertToLocale({
-              amount: order.shipping_methods?.[0]?.total ?? 0,
-              currency_code: order.currency_code,
-            })}
-            )
-          </Text>
+        <div data-testid="shipping-method-summary">
+          <p className="text-ui-fg-muted font-medium mb-2">Shipping method</p>
+          {shippingMethod ? (
+            <div className="text-ui-fg-base">
+              <p>{(shippingMethod as { name?: string }).name ?? "Standard"}</p>
+              <p className="text-ui-fg-subtle mt-0.5">
+                {convertToLocale({
+                  amount: (shippingMethod as { total?: number }).total ?? 0,
+                  currency_code: order.currency_code,
+                })}
+              </p>
+            </div>
+          ) : (
+            <p className="text-ui-fg-muted">—</p>
+          )}
         </div>
       </div>
-      <Divider className="mt-8" />
     </div>
   )
 }

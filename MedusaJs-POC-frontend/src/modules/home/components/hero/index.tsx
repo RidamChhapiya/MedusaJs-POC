@@ -8,7 +8,7 @@ const Hero = () => {
       {/* Background Decor */}
       <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-50 via-white to-purple-50 opacity-60 z-0"></div>
 
-      <div className="content-container relative z-10 w-full h-full flex flex-col md:flex-row items-center gap-12 md:gap-20 pt-20 md:pt-0">
+      <div className="content-container relative z-10 w-full h-full flex flex-col sm:flex-row items-center gap-12 sm:gap-16 md:gap-20 pt-20 sm:pt-0">
 
         {/* Left: Text */}
         <div className="flex-1 flex flex-col justify-center items-start gap-8 animate-in fade-in slide-in-from-bottom-10 duration-1000 fill-mode-forwards">

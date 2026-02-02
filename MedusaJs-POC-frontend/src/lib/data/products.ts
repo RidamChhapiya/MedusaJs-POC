@@ -92,36 +92,52 @@ export const listProducts = async ({
 }
 
 /**
- * This will fetch 100 products to the Next.js cache and sort them based on the sortBy parameter.
- * It will then return the paginated products based on the page and limit parameters.
+ * This will fetch products to the Next.js cache, optionally filter by search query,
+ * sort by sortBy, and return paginated results.
  */
 export const listProductsWithSort = async ({
   page = 0,
   queryParams,
   sortBy = "created_at",
   countryCode,
+  q,
 }: {
   page?: number
   queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductParams
   sortBy?: SortOptions
   countryCode: string
+  /** Optional search query: filter by title or handle (case-insensitive) */
+  q?: string
 }): Promise<{
   response: { products: HttpTypes.StoreProduct[]; count: number }
   nextPage: number | null
   queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductParams
 }> => {
   const limit = queryParams?.limit || 12
+  const fetchLimit = q ? 200 : 100
 
   const {
-    response: { products, count },
+    response: { products: rawProducts, count: rawCount },
   } = await listProducts({
     pageParam: 0,
     queryParams: {
       ...queryParams,
-      limit: 100,
+      limit: fetchLimit,
     },
     countryCode,
   })
+
+  let products = rawProducts
+  if (q && q.trim()) {
+    const term = q.trim().toLowerCase()
+    products = rawProducts.filter(
+      (p) =>
+        (p.title && p.title.toLowerCase().includes(term)) ||
+        (p.handle && p.handle.toLowerCase().includes(term)) ||
+        (p.description && p.description.toLowerCase().includes(term))
+    )
+  }
+  const count = products.length
 
   const sortedProducts = sortProducts(products, sortBy)
 

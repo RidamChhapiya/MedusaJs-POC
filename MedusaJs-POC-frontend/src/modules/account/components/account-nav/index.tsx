@@ -1,10 +1,9 @@
 "use client"
 
 import { clx } from "@medusajs/ui"
-import { ArrowRightOnRectangle } from "@medusajs/icons"
+import { ArrowRightOnRectangle, ChevronLeft, ChevronRight } from "@medusajs/icons"
 import { useParams, usePathname } from "next/navigation"
 
-import ChevronDown from "@modules/common/icons/chevron-down"
 import User from "@modules/common/icons/user"
 import MapPin from "@modules/common/icons/map-pin"
 import Package from "@modules/common/icons/package"
@@ -34,7 +33,7 @@ const AccountNav = ({
             data-testid="account-main-link"
           >
             <>
-              <ChevronDown className="transform rotate-90" />
+              <ChevronRight className="w-5 h-5" />
               <span>Account</span>
             </>
           </LocalizedClientLink>
@@ -56,7 +55,7 @@ const AccountNav = ({
                         <User size={20} />
                         <span>Profile</span>
                       </div>
-                      <ChevronDown className="transform -rotate-90" />
+                      <ChevronLeft className="w-5 h-5" />
                     </>
                   </LocalizedClientLink>
                 </li>
@@ -71,7 +70,7 @@ const AccountNav = ({
                         <MapPin size={20} />
                         <span>Addresses</span>
                       </div>
-                      <ChevronDown className="transform -rotate-90" />
+                      <ChevronLeft className="w-5 h-5" />
                     </>
                   </LocalizedClientLink>
                 </li>
@@ -85,7 +84,7 @@ const AccountNav = ({
                       <Package size={20} />
                       <span>Orders</span>
                     </div>
-                    <ChevronDown className="transform -rotate-90" />
+                    <ChevronLeft className="w-5 h-5" />
                   </LocalizedClientLink>
                 </li>
                 <li>
@@ -99,7 +98,7 @@ const AccountNav = ({
                       <ArrowRightOnRectangle />
                       <span>Log out</span>
                     </div>
-                    <ChevronDown className="transform -rotate-90" />
+                    <ChevronLeft className="w-5 h-5" />
                   </button>
                 </li>
               </ul>

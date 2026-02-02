@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { retrieveCustomer } from "@lib/data/customer"
+import { getRegion } from "@lib/data/regions"
 import MyNumbersContent from "@modules/account/components/my-numbers"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
@@ -15,11 +16,16 @@ type MyNumbersPageProps = {
 
 export default async function MyNumbersPage({ params }: MyNumbersPageProps) {
   const { countryCode } = await params
-  const customer = await retrieveCustomer().catch(() => null)
+  const [customer, region] = await Promise.all([
+    retrieveCustomer().catch(() => null),
+    getRegion(countryCode),
+  ])
 
   if (!customer) {
     redirect(`/${countryCode}/account`)
   }
+
+  const currencyCode = region?.currency_code ?? "inr"
 
   return (
     <div className="content-container py-8 small:py-12">
@@ -51,7 +57,7 @@ export default async function MyNumbersPage({ params }: MyNumbersPageProps) {
       </div>
 
       {/* Numbers, recharges, analytics */}
-      <MyNumbersContent customer={customer} />
+      <MyNumbersContent customer={customer} currencyCode={currencyCode} />
     </div>
   )
 }

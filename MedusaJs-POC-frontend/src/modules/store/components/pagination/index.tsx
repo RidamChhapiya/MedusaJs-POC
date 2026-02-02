@@ -27,7 +27,6 @@ export function Pagination({
     router.push(`${pathname}?${params.toString()}`)
   }
 
-  // Function to render a page button
   const renderPageButton = (
     p: number,
     label: string | number,
@@ -35,9 +34,13 @@ export function Pagination({
   ) => (
     <button
       key={p}
-      className={clx("txt-xlarge-plus text-ui-fg-muted", {
-        "text-ui-fg-base hover:text-ui-fg-subtle": isCurrent,
-      })}
+      type="button"
+      className={clx(
+        "min-w-[2.25rem] h-9 px-3 rounded-lg text-sm font-medium transition-all duration-200",
+        isCurrent
+          ? "bg-ui-bg-base text-ui-fg-base border border-ui-border-base shadow-sm cursor-default"
+          : "text-ui-fg-subtle border border-transparent hover:bg-ui-bg-subtle hover:text-ui-fg-base hover:border-ui-border-base"
+      )}
       disabled={isCurrent}
       onClick={() => handlePageChange(p)}
     >
@@ -45,13 +48,9 @@ export function Pagination({
     </button>
   )
 
-  // Function to render ellipsis
   const renderEllipsis = (key: string) => (
-    <span
-      key={key}
-      className="txt-xlarge-plus text-ui-fg-muted items-center cursor-default"
-    >
-      ...
+    <span key={key} className="flex items-center px-1 text-ui-fg-muted text-sm" aria-hidden>
+      …
     </span>
   )
 
@@ -105,10 +104,11 @@ export function Pagination({
     return buttons
   }
 
-  // Render the component
   return (
-    <div className="flex justify-center w-full mt-12">
-      <div className="flex gap-3 items-end" data-testid={dataTestid}>{renderPageButtons()}</div>
-    </div>
+    <nav className="flex justify-center w-full" aria-label="Pagination">
+      <div className="flex gap-2 items-center flex-wrap justify-center" data-testid={dataTestid}>
+        {renderPageButtons()}
+      </div>
+    </nav>
   )
 }

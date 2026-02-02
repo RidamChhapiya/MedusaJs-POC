@@ -8,12 +8,18 @@ import { Button } from "@medusajs/ui"
 import Spinner from "@modules/common/icons/spinner"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { HttpTypes } from "@medusajs/types"
+import { paymentInfoMap } from "@lib/constants"
+import { CreditCard } from "@medusajs/icons"
+
+type PaymentProvider = { id: string }
 
 type BuySimWizardProps = {
     customer: HttpTypes.StoreCustomer | null
+    currencyCode?: string
+    paymentMethods?: PaymentProvider[]
 }
 
-export default function BuySimWizard({ customer }: BuySimWizardProps) {
+export default function BuySimWizard({ customer, currencyCode = "inr", paymentMethods = [] }: BuySimWizardProps) {
     const [step, setStep] = useState<"number" | "kyc" | "plan" | "checkout" | "success">("number")
     const [selectedNumber, setSelectedNumber] = useState<AvailableNumber | null>(null)
     const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
@@ -26,13 +32,15 @@ export default function BuySimWizard({ customer }: BuySimWizardProps) {
         document_url: ""
     })
     const [checkoutForm, setCheckoutForm] = useState({
-        sim_password: "",
         shipping_address: "",
         shipping_city: "",
         shipping_state: "",
         shipping_pincode: "",
         shipping_landmark: ""
     })
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>(
+        paymentMethods.find((p) => p.id === "pp_system_default")?.id ?? paymentMethods[0]?.id ?? "pp_system_default"
+    )
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
 
     // Data Hooks
@@ -85,8 +93,7 @@ export default function BuySimWizard({ customer }: BuySimWizardProps) {
                 customer_id: CUSTOMER_ID,
                 plan_id: selectedPlan!.id,
                 preferred_number: selectedNumber!.msisdn,
-                sim_password: checkoutForm.sim_password,
-                payment_method: "manual",
+                payment_method: selectedPaymentMethod === "pp_system_default" ? "manual" : selectedPaymentMethod,
                 shipping_address: checkoutForm.shipping_address,
                 shipping_city: checkoutForm.shipping_city,
                 shipping_state: checkoutForm.shipping_state,
@@ -248,7 +255,7 @@ export default function BuySimWizard({ customer }: BuySimWizardProps) {
                                 <div key={plan.id} className="border rounded-lg p-6 flex flex-col items-center text-center hover:shadow-md transition-shadow">
                                     <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
                                     <div className="text-2xl font-bold mb-4">
-                                        {convertToLocale({ amount: plan.price, currency_code: "usd" })}
+                                        {convertToLocale({ amount: plan.price, currency_code: currencyCode })}
                                         <span className="text-sm font-normal text-ui-fg-subtle"> / {plan.duration} days</span>
                                     </div>
                                     <ul className="text-sm space-y-2 mb-6 text-ui-fg-subtle">
@@ -298,22 +305,40 @@ export default function BuySimWizard({ customer }: BuySimWizardProps) {
                             </div>
                             <div className="flex justify-between font-bold text-lg">
                                 <span>Total</span>
-                                <span>{convertToLocale({ amount: selectedPlan.price, currency_code: "usd" })}</span>
+                                <span>{convertToLocale({ amount: selectedPlan.price, currency_code: currencyCode })}</span>
                             </div>
                         </div>
 
-                        {/* Shipping Form */}
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">SIM Password</label>
-                                <input
-                                    type="password"
-                                    className="w-full p-2 border rounded-md"
-                                    placeholder="Create a SIM password"
-                                    value={checkoutForm.sim_password}
-                                    onChange={(e) => setCheckoutForm({ ...checkoutForm, sim_password: e.target.value })}
-                                />
-                            </div>
+                        {/* Payment & Shipping */}
+                        <div className="space-y-6">
+                            {/* Payment method (like cart checkout) */}
+                            {paymentMethods.length > 0 && (
+                                <div>
+                                    <h3 className="text-sm font-semibold mb-3 text-ui-fg-base">Payment method</h3>
+                                    <div className="space-y-2">
+                                        {paymentMethods.map((pm) => (
+                                            <label
+                                                key={pm.id}
+                                                className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-ui-bg-subtle has-[:checked]:border-ui-fg-interactive has-[:checked]:bg-ui-bg-base-hover"
+                                            >
+                                                <input
+                                                    type="radio"
+                                                    name="payment"
+                                                    value={pm.id}
+                                                    checked={selectedPaymentMethod === pm.id}
+                                                    onChange={() => setSelectedPaymentMethod(pm.id)}
+                                                    className="sr-only"
+                                                />
+                                                <span className="flex items-center gap-2 text-ui-fg-base">
+                                                    {paymentInfoMap[pm.id]?.icon ?? <CreditCard className="size-4" />}
+                                                    {paymentInfoMap[pm.id]?.title ?? pm.id}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-medium mb-1">Address</label>
                                 <input
@@ -346,7 +371,7 @@ export default function BuySimWizard({ customer }: BuySimWizardProps) {
                             </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">Desktop</label>
+                                    <label className="block text-sm font-medium mb-1">Pincode</label>
                                     <input
                                         type="text"
                                         className="w-full p-2 border rounded-md"
@@ -370,7 +395,7 @@ export default function BuySimWizard({ customer }: BuySimWizardProps) {
                                 size="large"
                                 className="w-full mt-6"
                                 onClick={() => setIsConfirmModalOpen(true)}
-                                disabled={!checkoutForm.sim_password || !checkoutForm.shipping_address}
+                                disabled={!checkoutForm.shipping_address}
                             >
                                 Proceed to Pay
                             </Button>

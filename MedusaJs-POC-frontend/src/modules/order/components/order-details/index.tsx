@@ -7,55 +7,49 @@ type OrderDetailsProps = {
 }
 
 const OrderDetails = ({ order, showStatus }: OrderDetailsProps) => {
-  const formatStatus = (str: string) => {
-    const formatted = str.split("_").join(" ")
-
-    return formatted.slice(0, 1).toUpperCase() + formatted.slice(1)
-  }
-
   return (
-    <div>
-      <Text>
-        We have sent the order confirmation details to{" "}
-        <span
-          className="text-ui-fg-medium-plus font-semibold"
-          data-testid="order-email"
-        >
-          {order.email}
-        </span>
-        .
-      </Text>
-      <Text className="mt-2">
-        Order date:{" "}
-        <span data-testid="order-date">
-          {new Date(order.created_at).toDateString()}
-        </span>
-      </Text>
-      <Text className="mt-2 text-ui-fg-interactive">
-        Order number: <span data-testid="order-id">{order.display_id}</span>
-      </Text>
-
-      <div className="flex items-center text-compact-small gap-x-4 mt-4">
+    <div className="rounded-xl border border-ui-border-base bg-ui-bg-subtle/50 p-5">
+      <h3 className="text-base font-semibold text-ui-fg-base mb-4">Order information</h3>
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        <div>
+          <dt className="text-ui-fg-muted font-medium">Order number</dt>
+          <dd className="text-ui-fg-base mt-0.5 font-medium" data-testid="order-id">
+            #{order.display_id}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-ui-fg-muted font-medium">Order date</dt>
+          <dd className="text-ui-fg-base mt-0.5" data-testid="order-date">
+            {new Date(order.created_at).toLocaleDateString(undefined, { dateStyle: "medium" })}
+          </dd>
+        </div>
+        <div className="sm:col-span-2">
+          <dt className="text-ui-fg-muted font-medium">Email</dt>
+          <dd className="text-ui-fg-base mt-0.5" data-testid="order-email">
+            {order.email ?? "—"}
+          </dd>
+        </div>
         {showStatus && (
           <>
-            <Text>
-              Order status:{" "}
-              <span className="text-ui-fg-subtle " data-testid="order-status">
-                {formatStatus(order.fulfillment_status)}
-              </span>
-            </Text>
-            <Text>
-              Payment status:{" "}
-              <span
-                className="text-ui-fg-subtle "
-                sata-testid="order-payment-status"
-              >
-                {formatStatus(order.payment_status)}
-              </span>
-            </Text>
+            <div>
+              <dt className="text-ui-fg-muted font-medium">Fulfillment status</dt>
+              <dd className="text-ui-fg-base mt-0.5" data-testid="order-status">
+                {order.fulfillment_status
+                  ? order.fulfillment_status.split("_").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ")
+                  : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-ui-fg-muted font-medium">Payment status</dt>
+              <dd className="text-ui-fg-base mt-0.5" data-testid="order-payment-status">
+                {order.payment_status
+                  ? order.payment_status.split("_").map((w) => w[0].toUpperCase() + w.slice(1)).join(" ")
+                  : "—"}
+              </dd>
+            </div>
           </>
         )}
-      </div>
+      </dl>
     </div>
   )
 }

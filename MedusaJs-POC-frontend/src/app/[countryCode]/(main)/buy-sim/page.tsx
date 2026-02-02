@@ -1,4 +1,6 @@
 import { retrieveCustomer } from "@lib/data/customer"
+import { getRegion } from "@lib/data/regions"
+import { listCartPaymentMethods } from "@lib/data/payment"
 import BuySimWizard from "@modules/telecom/templates/buy-sim-wizard"
 import { Metadata } from "next"
 
@@ -7,8 +9,23 @@ export const metadata: Metadata = {
     description: "Purchase a new SIM card and get connected with Nexel.",
 }
 
-export default async function BuySimPage() {
-    const customer = await retrieveCustomer().catch(() => null)
+type Props = { params: Promise<{ countryCode: string }> }
 
-    return <BuySimWizard customer={customer} />
+export default async function BuySimPage(props: Props) {
+    const params = await props.params
+    const [customer, region] = await Promise.all([
+        retrieveCustomer().catch(() => null),
+        getRegion(params.countryCode).catch(() => null),
+    ])
+    const paymentMethods = region?.id
+        ? await listCartPaymentMethods(region.id).then((p) => p ?? [])
+        : []
+
+    return (
+        <BuySimWizard
+            customer={customer}
+            currencyCode={region?.currency_code ?? "inr"}
+            paymentMethods={paymentMethods}
+        />
+    )
 }

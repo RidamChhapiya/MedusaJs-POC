@@ -4,16 +4,20 @@ import React from "react"
 
 const Help = () => {
   return (
-    <div className="mt-6">
-      <Heading className="text-base-semi">Need help?</Heading>
-      <div className="text-base-regular my-2">
-        <ul className="gap-y-2 flex flex-col">
+    <div className="rounded-xl border border-ui-border-base bg-ui-bg-subtle/50 p-5">
+      <Heading level="h3" className="text-base font-semibold text-ui-fg-base mb-2">
+        Need help?
+      </Heading>
+      <div className="text-sm text-ui-fg-subtle">
+        <ul className="gap-y-1.5 flex flex-col">
           <li>
-            <LocalizedClientLink href="/contact">Contact</LocalizedClientLink>
+            <LocalizedClientLink href="/customer-service" className="text-ui-fg-interactive hover:underline">
+              Customer service & FAQ
+            </LocalizedClientLink>
           </li>
           <li>
-            <LocalizedClientLink href="/contact">
-              Returns & Exchanges
+            <LocalizedClientLink href="/customer-service" className="text-ui-fg-interactive hover:underline">
+              Returns & exchanges
             </LocalizedClientLink>
           </li>
         </ul>

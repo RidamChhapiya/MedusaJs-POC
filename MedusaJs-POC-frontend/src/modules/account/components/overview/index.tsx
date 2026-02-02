@@ -1,8 +1,8 @@
 "use client"
 
+import { ChevronRight } from "@medusajs/icons"
 import { Container } from "@medusajs/ui"
 
-import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
@@ -118,7 +118,7 @@ const Overview = ({ customer, orders }: OverviewProps) => {
                               <span className="sr-only">
                                 Go to order #{order.display_id}
                               </span>
-                              <ChevronDown className="-rotate-90" />
+                              <ChevronRight className="w-5 h-5 text-ui-fg-muted" />
                             </button>
                           </Container>
                         </LocalizedClientLink>

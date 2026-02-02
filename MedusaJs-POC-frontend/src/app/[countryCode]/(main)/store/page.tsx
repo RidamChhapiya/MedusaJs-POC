@@ -13,6 +13,7 @@ type Params = {
     sortBy?: SortOptions
     page?: string
     type?: string
+    q?: string
   }>
   params: Promise<{
     countryCode: string
@@ -22,17 +23,17 @@ type Params = {
 import { listCategories } from "@lib/data/categories"
 
 export default async function StorePage(props: Params) {
-  const params = await props.params;
-  const searchParams = await props.searchParams;
-  const { sortBy, page, type } = searchParams
+  const params = await props.params
+  const searchParams = await props.searchParams
+  const { sortBy, page, type, q } = searchParams
 
-  // Fetch categories to get their IDs
-  // We fetch all top-level categories or filter by handle if API supports array (it usually supports single handle or list)
-  // Let's fetch list and find them in memory to save calls or simple list
   const categories = await listCategories({ limit: 100 })
 
-  const smartphones = categories.find(c => c.handle === "smartphones")
-  const accessories = categories.find(c => c.handle === "accessories")
+  const smartphones = categories.find((c) => c.handle === "smartphones")
+  const accessories = categories.find((c) => c.handle === "accessories")
+
+  const activeType =
+    type === "accessories" ? "accessories" : type === "smartphones" ? "smartphones" : "all"
 
   return (
     <StoreTemplate
@@ -40,7 +41,8 @@ export default async function StorePage(props: Params) {
       page={page}
       countryCode={params.countryCode}
       categories={{ smartphones, accessories }}
-      activeType={type || "smartphones"}
+      activeType={activeType}
+      searchQuery={q}
     />
   )
 }

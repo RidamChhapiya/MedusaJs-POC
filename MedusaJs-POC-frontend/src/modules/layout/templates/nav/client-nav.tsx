@@ -67,7 +67,7 @@ export default function ClientNav({
                     </div>
 
                     {/* Center: Logo & Main Links */}
-                    <div className="flex items-center h-full gap-x-8">
+                    <div className="flex items-center h-full gap-x-6">
                         <LocalizedClientLink
                             href="/"
                             className="txt-compact-xlarge-plus text-ui-fg-base dark:text-white uppercase transition-transform duration-300 hover:scale-105 tracking-widest font-bold whitespace-nowrap"
@@ -89,6 +89,12 @@ export default function ClientNav({
                             <LocalizedClientLink className={linkClasses} href="/business">
                                 BUSINESS
                             </LocalizedClientLink>
+                            <LocalizedClientLink className={linkClasses} href="/my-numbers" data-testid="nav-my-numbers-link">
+                                MY NUMBERS
+                            </LocalizedClientLink>
+                            <LocalizedClientLink className={linkClasses} href="/customer-service">
+                                CUSTOMER SERVICE
+                            </LocalizedClientLink>
                         </div>
                     </div>
 
@@ -101,13 +107,6 @@ export default function ClientNav({
                                 data-testid="nav-my-hub-link"
                             >
                                 MY HUB
-                            </LocalizedClientLink>
-                            <LocalizedClientLink
-                                className={linkClasses}
-                                href="/my-numbers"
-                                data-testid="nav-my-numbers-link"
-                            >
-                                MY NUMBERS
                             </LocalizedClientLink>
                         </div>
                         <ThemeToggle />

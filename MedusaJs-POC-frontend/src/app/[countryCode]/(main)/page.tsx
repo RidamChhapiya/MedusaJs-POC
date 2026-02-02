@@ -2,9 +2,8 @@ import { Metadata } from "next"
 
 import Hero from "@modules/home/components/hero"
 import FeatureSection from "@modules/home/components/feature-section"
-import { listCollections } from "@lib/data/collections"
 import { getRegion } from "@lib/data/regions"
-import FeaturedProducts from "@modules/home/components/featured-products"
+import TrendingNow from "@modules/home/components/trending-now"
 
 export const metadata: Metadata = {
   title: "Medusa Telecom - Future Connected",
@@ -21,11 +20,7 @@ export default async function Home(props: {
 
   const region = await getRegion(countryCode)
 
-  const { collections } = await listCollections({
-    fields: "id, handle, title",
-  })
-
-  if (!collections || !region) {
+  if (!region) {
     return null
   }
 
@@ -82,16 +77,8 @@ export default async function Home(props: {
           />
         </section>
 
-        {/* Trending */}
-        <div className="py-32 px-6 content-container bg-white">
-          <div className="mb-20 text-center space-y-4">
-            <h2 className="text-4xl font-bold tracking-tight text-neutral-900">Trending Now</h2>
-            <p className="text-neutral-500 font-light text-lg">Community favorites and new arrivals</p>
-          </div>
-          <ul className="flex flex-col gap-x-6 gap-y-12">
-            <FeaturedProducts collections={collections} region={region} />
-          </ul>
-        </div>
+        {/* Trending Now */}
+        <TrendingNow region={region} />
       </div>
     </main>
   )
