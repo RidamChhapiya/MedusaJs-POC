@@ -12,7 +12,7 @@ function CartMismatchBanner(props: {
 }) {
   const { customer, cart } = props
   const [isPending, setIsPending] = useState(false)
-  const [actionText, setActionText] = useState("Run transfer again")
+  const [actionText, setActionText] = useState("Link cart to my account")
 
   if (!customer || !!cart.customer_id) {
     return
@@ -21,11 +21,11 @@ function CartMismatchBanner(props: {
   const handleSubmit = async () => {
     try {
       setIsPending(true)
-      setActionText("Transferring..")
+      setActionText("Linking…")
 
       await transferCart()
     } catch {
-      setActionText("Run transfer again")
+      setActionText("Link cart to my account")
       setIsPending(false)
     }
   }
@@ -35,7 +35,7 @@ function CartMismatchBanner(props: {
       <div className="flex flex-col small:flex-row small:gap-2 gap-1 items-center">
         <span className="flex items-center gap-1">
           <ExclamationCircleSolid className="inline" />
-          Something went wrong when we tried to transfer your cart
+          This cart isn&apos;t linked to your account.
         </span>
 
         <span>·</span>

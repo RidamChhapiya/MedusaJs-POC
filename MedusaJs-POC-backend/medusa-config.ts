@@ -22,9 +22,36 @@ module.exports = defineConfig({
       key: "telecom",
     },
     {
+      resolve: "@medusajs/medusa/notification",
+      options: {
+        providers: [
+          {
+            resolve: "./src/modules/notification-gmail",
+            id: "gmail",
+            options: {
+              channels: ["email"],
+              user: process.env.GMAIL_USER || "",
+              pass: process.env.GMAIL_APP_PASSWORD || "",
+            },
+          },
+        ],
+      },
+    },
+    {
       resolve: "@medusajs/medusa/payment",
-      // System payment provider (pp_system_default) is built-in and available by default
-      // No additional configuration needed
+      options: {
+        providers: [
+          {
+            resolve: "@medusajs/medusa/payment-stripe",
+            id: "stripe",
+            options: {
+              apiKey: process.env.STRIPE_API_KEY,
+              webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+              capture: true, // capture payment automatically (no manual capture in Admin)
+            },
+          },
+        ],
+      },
     },
   ],
 })

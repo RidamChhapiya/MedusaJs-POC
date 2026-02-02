@@ -18,11 +18,17 @@ export default async function CheckoutForm({
   }
 
   const shippingMethods = await listCartShippingMethods(cart.id)
-  const paymentMethods = await listCartPaymentMethods(cart.region?.id ?? "")
+  const allPaymentMethods = await listCartPaymentMethods(cart.region?.id ?? "")
 
-  if (!shippingMethods || !paymentMethods) {
+  if (!shippingMethods || !allPaymentMethods) {
     return null
   }
+
+  // Only show Credit card (Stripe) and Manual – hide Bancontact, BLIK, iDEAL, etc.
+  const PAYMENT_IDS_TO_SHOW = ["pp_stripe_stripe", "pp_system_default"]
+  const paymentMethods = allPaymentMethods.filter((p: { id?: string }) =>
+    PAYMENT_IDS_TO_SHOW.includes(p?.id ?? "")
+  )
 
   return (
     <div className="w-full grid grid-cols-1 gap-y-8">

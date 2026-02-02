@@ -194,6 +194,16 @@ const Shipping: React.FC<ShippingProps> = ({
             </div>
             <div data-testid="delivery-options-container">
               <div className="pb-8 md:pt-0 pt-2">
+                {!_shippingMethods?.length && !hasPickupOptions && (
+                  <div
+                    className="mb-4 rounded-rounded border border-ui-border-base bg-ui-bg-subtle p-4 text-small-regular text-ui-fg-muted"
+                    data-testid="no-shipping-options-message"
+                  >
+                    No shipping or pickup options are available for your address.
+                    Make sure your region is supported, or contact support if you
+                    believe this is an error.
+                  </div>
+                )}
                 {hasPickupOptions && (
                   <RadioGroup
                     value={showPickupOptions}

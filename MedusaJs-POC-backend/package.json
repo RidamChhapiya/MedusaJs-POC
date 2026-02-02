@@ -16,6 +16,7 @@
     "build": "medusa build",
     "seed": "medusa exec ./src/scripts/seed.ts",
     "seed:gear": "medusa exec ./src/scripts/seed-gear-products.ts",
+    "seed:shipping": "medusa exec ./src/scripts/seed-shipping.ts",
     "start": "medusa start",
     "dev": "medusa develop",
     "test:integration:http": "TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
@@ -26,7 +27,9 @@
     "@medusajs/admin-sdk": "2.12.1",
     "@medusajs/cli": "2.12.1",
     "@medusajs/framework": "2.12.1",
-    "@medusajs/medusa": "2.12.1"
+    "@medusajs/medusa": "2.12.1",
+    "nodemailer": "^6.10.1",
+    "resend": "^6.9.1"
   },
   "devDependencies": {
     "@medusajs/test-utils": "2.12.1",

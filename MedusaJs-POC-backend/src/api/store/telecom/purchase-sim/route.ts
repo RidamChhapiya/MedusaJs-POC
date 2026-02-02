@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Client } from "pg"
+import { Modules } from "@medusajs/framework/utils"
 import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
 import MsisdnInventory from "../../../../modules/telecom-core/models/msisdn-inventory"
 
@@ -328,6 +329,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
                 order = orderResult
                 console.log(`[SIM Purchase] Created order ${order.id} for subscription ${subscription.id}`)
+                // Emit order.placed so subscribers (X service, telecom provisioning) run
+                const eventBus = req.scope.resolve(Modules.EVENT_BUS)
+                await eventBus.emit({ name: "order.placed", data: { id: order.id } })
             }
 
             // Create payment collection and capture for manual payment

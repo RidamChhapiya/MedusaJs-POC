@@ -1,4 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { Modules } from "@medusajs/framework/utils"
 import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
 
 /**
@@ -182,6 +183,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
 
                     order = orderResult
                     console.log(`[Recharge] Created order ${order.id} for subscription ${subscription.id}`)
+                    // Emit order.placed so subscribers (X service, telecom provisioning) run
+                    const eventBus = req.scope.resolve(Modules.EVENT_BUS)
+                    await eventBus.emit({ name: "order.placed", data: { id: order.id } })
                 }
             }
         } catch (orderError) {
