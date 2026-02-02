@@ -41,7 +41,7 @@ export default function RootLayout(props: { children: React.ReactNode }) {
           }}
         />
       </head>
-      <body className="bg-white dark:bg-grey-80 text-grey-90 dark:text-grey-10">
+      <body suppressHydrationWarning className="bg-white dark:bg-grey-80 text-grey-90 dark:text-grey-10">
         <QueryProvider>
           <ThemeProvider>
             <main className="relative bg-white dark:bg-grey-80 min-h-screen">{props.children}</main>
