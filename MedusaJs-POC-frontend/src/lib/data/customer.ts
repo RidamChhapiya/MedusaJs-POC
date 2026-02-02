@@ -115,7 +115,8 @@ export async function login(_currentState: unknown, formData: FormData) {
   try {
     await sdk.auth
       .login("customer", "emailpass", { email, password })
-      .then(async (token) => {
+      .then(async (tokenResponse: any) => {
+        const token = tokenResponse.token || tokenResponse.access_token || tokenResponse
         await setAuthToken(token as string)
         const customerCacheTag = await getCacheTag("customers")
         revalidateTag(customerCacheTag)

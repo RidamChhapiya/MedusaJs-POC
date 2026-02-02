@@ -73,7 +73,7 @@ export default function ClientNav({
                             className="txt-compact-xlarge-plus text-ui-fg-base dark:text-white uppercase transition-transform duration-300 hover:scale-105 tracking-widest font-bold whitespace-nowrap"
                             data-testid="nav-store-link"
                         >
-                            Medusa Telecom
+                            NEXEL TELECOM
                         </LocalizedClientLink>
 
                         <div className="hidden small:flex items-center gap-x-6 h-full">
