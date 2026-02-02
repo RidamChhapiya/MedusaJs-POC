@@ -26,8 +26,14 @@ export const retrieveOrder = async (id: string) => {
       cache: "force-cache",
     })
     .then(({ order }) => order)
-    .catch((err) => medusaError(err))
+    .catch((err) => {
+      if (err.status === 401) {
+        return null
+      }
+      return medusaError(err)
+    })
 }
+
 
 export const listOrders = async (
   limit: number = 10,
@@ -37,8 +43,6 @@ export const listOrders = async (
   const headers = {
     ...(await getAuthHeaders()),
   }
-
-  console.log("[ListOrders] Fetching orders with headers:", JSON.stringify(headers, null, 2))
 
   const next = {
     ...(await getCacheOptions("orders")),
@@ -56,17 +60,21 @@ export const listOrders = async (
       },
       headers,
       next,
-      cache: "no-cache", // Force fresh fetch for debugging
+      cache: "no-cache",
     })
     .then(({ orders }) => {
-      console.log(`[ListOrders] Fetched ${orders.length} orders`)
       return orders
     })
     .catch((err) => {
+      // Gracefully handle 401 Unauthorized
+      if (err.status === 401) {
+        return null
+      }
       console.error("[ListOrders] Error fetching orders:", err)
       return medusaError(err)
     })
 }
+
 
 export const createTransferRequest = async (
   state: {
