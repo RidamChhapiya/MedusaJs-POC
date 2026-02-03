@@ -1,5 +1,5 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import TelecomCoreModuleService from "../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 export type CreateSubscriptionInput = {
     customer_id: string
@@ -35,11 +35,10 @@ export const createSubscriptionStep = createStep(
     async (input: CreateSubscriptionInput, { container }) => {
         const telecomService: TelecomCoreModuleService = container.resolve("telecom")
 
-        const subscriptions = []
+        const subscriptions: { subscription_id: string; line_item_id: string; msisdn_id: string }[] = []
         const now = new Date()
 
         for (const validatedItem of input.validated_items) {
-            // Find the corresponding plan config
             const planItem = input.plan_items.find(
                 (p) => p.line_item_id === validatedItem.line_item_id
             )
@@ -48,15 +47,14 @@ export const createSubscriptionStep = createStep(
                 continue
             }
 
-            // Idempotency check: Check if subscription already exists for this line item
-            // We can use a query to check if a subscription with this msisdn_id already exists
+            // Idempotency: subscription has msisdn = phone number
             const existingSubscriptions = await telecomService.listSubscriptions({
-                msisdn_id: validatedItem.msisdn_id,
+                msisdn: validatedItem.phone_number,
             })
 
             if (existingSubscriptions && existingSubscriptions.length > 0) {
                 console.log(
-                    `[Create Subscription] Subscription already exists for MSISDN ${validatedItem.msisdn_id}, skipping`
+                    `[Create Subscription] Subscription already exists for MSISDN ${validatedItem.phone_number}, skipping`
                 )
                 subscriptions.push({
                     subscription_id: existingSubscriptions[0].id,
@@ -66,32 +64,32 @@ export const createSubscriptionStep = createStep(
                 continue
             }
 
-            // Calculate renewal date (default 30 days, or based on contract_months)
-            const renewalDate = new Date(now)
             const contractMonths = planItem.plan_config?.contract_months || 1
-            renewalDate.setMonth(renewalDate.getMonth() + contractMonths)
+            const endDate = new Date(now)
+            endDate.setMonth(endDate.getMonth() + contractMonths)
 
-            // Get billing day (day of month when purchased)
-            const billingDay = now.getDate()
-
-            // Create subscription
+            // Create subscription (model: customer_id, plan_id, msisdn, status, start_date, end_date, data_balance_mb, voice_balance_min, auto_renew)
             const newSubscription = await telecomService.createSubscriptions({
                 customer_id: input.customer_id,
+                plan_id: (planItem as any).plan_id ?? "",
+                msisdn: validatedItem.phone_number,
                 status: "active",
-                msisdn_id: validatedItem.msisdn_id,
-                current_period_start: now,
-                renewal_date: renewalDate,
-                billing_day: billingDay,
-            })
+                start_date: now,
+                end_date: endDate,
+                data_balance_mb: 0,
+                voice_balance_min: 0,
+                auto_renew: false,
+            } as any)
 
+            const sub = Array.isArray(newSubscription) ? newSubscription[0] : newSubscription
             subscriptions.push({
-                subscription_id: newSubscription.id,
+                subscription_id: sub.id,
                 line_item_id: validatedItem.line_item_id,
                 msisdn_id: validatedItem.msisdn_id,
             })
 
             console.log(
-                `[Create Subscription] Created subscription ${newSubscription.id} for phone ${validatedItem.phone_number}`
+                `[Create Subscription] Created subscription ${sub.id} for phone ${validatedItem.phone_number}`
             )
         }
 

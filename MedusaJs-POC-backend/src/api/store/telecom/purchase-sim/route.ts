@@ -1,7 +1,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Client } from "pg"
 import { Modules } from "@medusajs/framework/utils"
-import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 import MsisdnInventory from "../../../../modules/telecom-core/models/msisdn-inventory"
 
 /**

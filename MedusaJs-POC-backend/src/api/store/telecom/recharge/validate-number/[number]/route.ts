@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Check if a number is an active Nexel number (same logic as recharge step 1).

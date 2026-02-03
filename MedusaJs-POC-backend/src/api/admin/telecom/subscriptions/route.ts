@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Admin API: List Subscriptions
@@ -37,20 +37,9 @@ export async function GET(
         if (status) filters.status = status
         if (customer_id) filters.customer_id = customer_id
 
-        // If MSISDN filter provided, find the MSISDN ID first
+        // If MSISDN filter provided, filter by phone number (subscription.msisdn)
         if (msisdn) {
-            const [msisdnRecord] = await telecomModule.listMsisdnInventory({ msisdn })
-            if (msisdnRecord) {
-                filters.msisdn_id = msisdnRecord.id
-            } else {
-                // No matching MSISDN, return empty result
-                return res.json({
-                    subscriptions: [],
-                    count: 0,
-                    limit,
-                    offset
-                })
-            }
+            filters.msisdn = msisdn
         }
 
         // Get subscriptions
@@ -58,13 +47,13 @@ export async function GET(
 
         console.log(`[Admin API] Found ${subscriptions.length} subscriptions`)
 
-        // Get MSISDN details for each subscription
+        // Get MSISDN details for each subscription (subscription has msisdn = phone number)
         const enrichedSubscriptions = await Promise.all(
             subscriptions.map(async (sub) => {
-                let msisdnDetails = null
-                if (sub.msisdn_id) {
-                    const [msisdn] = await telecomModule.listMsisdnInventory({ id: sub.msisdn_id })
-                    msisdnDetails = msisdn ? { id: msisdn.id, msisdn: msisdn.msisdn } : null
+                let msisdnDetails: { id: string; msisdn: string } | null = null
+                if (sub.msisdn) {
+                    const [inv] = await telecomModule.listMsisdnInventories({ phone_number: sub.msisdn })
+                    msisdnDetails = inv ? { id: inv.id, msisdn: inv.phone_number } : null
                 }
 
                 return {

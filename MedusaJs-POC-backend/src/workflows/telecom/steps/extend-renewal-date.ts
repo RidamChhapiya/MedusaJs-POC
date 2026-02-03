@@ -1,5 +1,5 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import TelecomCoreModuleService from "../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 export type ExtendRenewalDateInput = {
     subscription: any
@@ -40,14 +40,12 @@ export const extendRenewalDateStep = createStep(
             console.log(`   New date: ${new_renewal_date}`)
         }
 
-        // Update subscription
-        await telecomService.updateSubscriptions([
-            {
-                id: input.subscription.id,
-                status: new_status,
-                renewal_date: new_renewal_date
-            }
-        ])
+        // Update subscription (model may not have renewal_date; use as any)
+        await telecomService.updateSubscriptions({
+            id: input.subscription.id,
+            status: new_status,
+            ...({ renewal_date: new_renewal_date } as any)
+        } as any)
 
         console.log(`[Extend Renewal] Updated subscription status: ${new_status}`)
 

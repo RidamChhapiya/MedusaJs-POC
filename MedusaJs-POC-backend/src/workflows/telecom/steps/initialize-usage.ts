@@ -1,5 +1,5 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import TelecomCoreModuleService from "../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 export type InitializeUsageInput = {
     subscriptions: Array<{
@@ -22,10 +22,12 @@ export const initializeUsageStep = createStep(
         const cycleMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
 
         for (const subscription of input.subscriptions) {
-            // Check if usage counter already exists (idempotency)
+            const periodMonth = now.getMonth() + 1
+            const periodYear = now.getFullYear()
             const existingCounters = await telecomService.listUsageCounters({
                 subscription_id: subscription.subscription_id,
-                cycle_month: cycleMonth,
+                period_month: periodMonth,
+                period_year: periodYear,
             })
 
             if (existingCounters && existingCounters.length > 0) {
@@ -35,12 +37,12 @@ export const initializeUsageStep = createStep(
                 continue
             }
 
-            // Create usage counter
             await telecomService.createUsageCounters({
                 subscription_id: subscription.subscription_id,
-                cycle_month: cycleMonth,
-                data_used: 0,
-                voice_used: 0,
+                period_month: periodMonth,
+                period_year: periodYear,
+                data_used_mb: 0,
+                voice_used_min: 0,
             })
 
             console.log(

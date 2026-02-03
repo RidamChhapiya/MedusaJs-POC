@@ -1,5 +1,5 @@
 import { SubscriberArgs, SubscriberConfig } from "@medusajs/medusa"
-import TelecomCoreModuleService from "../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Order Fulfillment Subscriber
@@ -52,22 +52,19 @@ export default async function handleOrderFulfillment({
 
         // Activate subscription
         if (subscription_id) {
-            await telecomModule.updateSubscriptions({
-                id: subscription_id,
-                status: "active"
-            })
+            await telecomModule.updateSubscriptions({ id: subscription_id, status: "active" } as any)
             console.log(`[Fulfillment] ✅ Activated subscription ${subscription_id}`)
         }
 
         // Update order metadata
-        await orderModule.updateOrders({
+        await orderModule.updateOrders([{
             id: order_id,
             metadata: {
-                ...order.metadata,
+                ...(order.metadata || {}),
                 sim_activated: true,
                 activated_at: new Date().toISOString()
             }
-        })
+        }] as any)
 
         console.log(`[Fulfillment] ✅ SIM purchase order ${order_id} fully activated`)
 

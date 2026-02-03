@@ -1,5 +1,5 @@
 import { MedusaContainer } from "@medusajs/framework/types"
-import TelecomCoreModuleService from "../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Scheduled Job: Release Expired Number Reservations

@@ -1,6 +1,6 @@
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { processRenewalWorkflow } from "../workflows/telecom/process-renewal"
-import TelecomCoreModuleService from "../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Daily Renewal Processing Job
@@ -32,9 +32,9 @@ export default async function processDailyRenewals({ container }: { container: a
 
         logger.info(`📊 [Daily Renewals] Found ${subscriptions.length} active subscriptions`)
 
-        // Filter subscriptions where renewal_date <= today
+        // Filter subscriptions where renewal_date <= today (use end_date if renewal_date not on model)
         const dueForRenewal = subscriptions.filter(sub => {
-            const renewalDate = new Date(sub.renewal_date)
+            const renewalDate = new Date((sub as any).renewal_date ?? sub.end_date)
             renewalDate.setHours(0, 0, 0, 0)
             return renewalDate <= today
         })

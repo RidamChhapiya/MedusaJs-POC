@@ -1,6 +1,6 @@
 import { SubscriberConfig } from "@medusajs/framework"
 import { Modules } from "@medusajs/framework/utils"
-// import TelecomCoreModuleService from "../modules/telecom-core/service" // Cannot import directly in subscriber sometimes, need resolution
+// import TelecomCoreModuleService from "@modules/telecom-core/service" // Cannot import directly in subscriber sometimes, need resolution
 
 export default async function createCustomerProfile({
     event: { data },

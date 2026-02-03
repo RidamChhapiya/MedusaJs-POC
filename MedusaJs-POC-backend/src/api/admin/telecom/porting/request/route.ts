@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Admin API: Create Porting Request
@@ -34,7 +34,7 @@ export async function POST(
             port_type,
             status: "pending",
             requested_date: new Date()
-        })
+        } as any)
 
         return res.json({
             success: true,

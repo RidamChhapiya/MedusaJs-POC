@@ -1,6 +1,6 @@
 import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
-import TelecomCoreModuleService from "../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 type UsageUpdateInput = {
     msisdn: string
@@ -61,9 +61,9 @@ export async function POST(
 
             const msisdn = msisdns[0]
 
-            // 2. Find active subscription for this MSISDN
+            // 2. Find active subscription for this MSISDN (subscription has msisdn = phone number)
             const subscriptions = await telecomService.listSubscriptions({
-                msisdn_id: msisdn.id,
+                msisdn: update.msisdn,
                 status: "active"
             })
 
@@ -74,37 +74,41 @@ export async function POST(
 
             const subscription = subscriptions[0]
 
-            // 3. Find or create usage counter for current month
+            // 3. Find or create usage counter for current month (model: period_month, period_year, data_used_mb, voice_used_min)
+            const periodMonth = now.getMonth() + 1
+            const periodYear = now.getFullYear()
             let usageCounters = await telecomService.listUsageCounters({
                 subscription_id: subscription.id,
-                cycle_month: cycleMonth
+                period_month: periodMonth,
+                period_year: periodYear
             })
 
             let usageCounter
             if (usageCounters.length === 0) {
-                // Create new usage counter
-                usageCounter = await telecomService.createUsageCounters({
+                const created = await telecomService.createUsageCounters({
                     subscription_id: subscription.id,
-                    cycle_month: cycleMonth,
-                    data_used: 0,
-                    voice_used: 0
-                })
+                    period_month: periodMonth,
+                    period_year: periodYear,
+                    data_used_mb: 0,
+                    voice_used_min: 0
+                } as any)
+                usageCounter = Array.isArray(created) ? created[0] : created
                 console.log(`[Usage Update] Created new usage counter for ${update.msisdn}`)
             } else {
                 usageCounter = usageCounters[0]
             }
 
             // 4. Increment usage
-            const newDataUsed = usageCounter.data_used + update.data_mb
-            const newVoiceUsed = usageCounter.voice_used + update.voice_min
+            const newDataUsed = usageCounter.data_used_mb + update.data_mb
+            const newVoiceUsed = usageCounter.voice_used_min + update.voice_min
 
-            await telecomService.updateUsageCounters([{
+            await telecomService.updateUsageCounters({
                 id: usageCounter.id,
-                data_used: newDataUsed,
-                voice_used: newVoiceUsed
-            }])
+                data_used_mb: newDataUsed,
+                voice_used_min: newVoiceUsed
+            } as any)
 
-            console.log(`[Usage Update] Updated ${update.msisdn}: Data ${usageCounter.data_used}MB → ${newDataUsed}MB, Voice ${usageCounter.voice_used}min → ${newVoiceUsed}min`)
+            console.log(`[Usage Update] Updated ${update.msisdn}: Data ${usageCounter.data_used_mb}MB → ${newDataUsed}MB, Voice ${usageCounter.voice_used_min}min → ${newVoiceUsed}min`)
 
             results.updated++
 
@@ -115,18 +119,18 @@ export async function POST(
             }
 
             if (!planConfig.is_unlimited) {
-                const previousPercentage = (usageCounter.data_used / planConfig.data_quota_mb) * 100
+                const previousPercentage = (usageCounter.data_used_mb / planConfig.data_quota_mb) * 100
                 const currentPercentage = (newDataUsed / planConfig.data_quota_mb) * 100
 
                 console.log(`[Usage Update] ${update.msisdn} usage: ${currentPercentage.toFixed(2)}%`)
 
                 // Check for threshold crossings
                 if (currentPercentage >= 100 && previousPercentage < 100) {
-                    // 100% - Bar the subscription
-                    await telecomService.updateSubscriptions([{
+                    // 100% - Suspend the subscription (model has no "barred", use suspended)
+                    await telecomService.updateSubscriptions({
                         id: subscription.id,
-                        status: "barred"
-                    }])
+                        status: "suspended"
+                    } as any)
 
                     console.warn(`[Usage Update] ⚠️ BARRED ${update.msisdn} - exceeded quota (${newDataUsed}MB / ${planConfig.data_quota_mb}MB)`)
 

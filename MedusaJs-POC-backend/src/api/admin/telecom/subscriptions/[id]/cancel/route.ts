@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 import { Modules } from "@medusajs/framework/utils"
 
 /**
@@ -42,21 +42,23 @@ export async function POST(
         }
 
         // Update subscription status
-        const updated = await telecomModule.updateSubscriptions(id, {
+        const updateResult = await telecomModule.updateSubscriptions({
+            id,
             status: "cancelled"
-        })
+        } as any)
+        const updated = Array.isArray(updateResult) ? updateResult[0] : updateResult
 
-        // Release MSISDN if exists
-        if (subscription.msisdn_id) {
-            await telecomModule.updateMsisdnInventory(subscription.msisdn_id, {
-                status: "available",
-                subscription_id: null
-            })
-            console.log(`[Admin API] Released MSISDN: ${subscription.msisdn_id}`)
+        // Release MSISDN if exists (subscription has msisdn = phone number; look up inventory by phone_number)
+        if (subscription.msisdn) {
+            const [inv] = await telecomModule.listMsisdnInventories({ phone_number: subscription.msisdn })
+            if (inv) {
+                await telecomModule.updateMsisdnInventories({ id: inv.id, status: "available", customer_id: null } as any)
+                console.log(`[Admin API] Released MSISDN: ${subscription.msisdn}`)
+            }
         }
 
         // Emit event
-        await eventBus.emit("telecom.subscription.cancelled", {
+        await eventBus.emit("telecom.subscription.cancelled" as any, {
             subscription_id: id,
             reason: reason || "Customer request",
             immediate,

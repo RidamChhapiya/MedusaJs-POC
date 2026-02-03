@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Admin API: Comprehensive User Analytics Dashboard
@@ -115,7 +115,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
                     subscription_id: sub.id
                 })
 
-                let familyPlanInfo = null
+                let familyPlanInfo: { plan_name: string; member_type: string; total_members: number; shared_data_quota: number; shared_voice_quota: number } | null = null
                 if (familyMembers.length > 0) {
                     const member = familyMembers[0]
                     const [familyPlan] = await telecomModule.listFamilyPlans({ id: member.family_plan_id })
@@ -239,10 +239,10 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
                     // Billing Info
                     billing: {
-                        next_renewal: sub.renewal_date,
-                        billing_day: sub.billing_day,
+                        next_renewal: (sub as any).renewal_date ?? sub.end_date,
+                        billing_day: (sub as any).billing_day ?? null,
                         days_until_renewal: Math.ceil(
-                            (new Date(sub.renewal_date).getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
+                            (new Date((sub as any).renewal_date ?? sub.end_date).getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24)
                         )
                     },
 

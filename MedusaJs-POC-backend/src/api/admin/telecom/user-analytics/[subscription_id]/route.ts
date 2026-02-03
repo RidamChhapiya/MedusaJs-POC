@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Admin API: Individual User Deep Dive
@@ -27,10 +27,10 @@ export async function GET(
             return res.status(404).json({ error: "Subscription not found" })
         }
 
-        // Get MSISDN
-        let msisdnDetails = null
-        if (subscription.msisdn_id) {
-            const [msisdn] = await telecomModule.listMsisdnInventories({ id: subscription.msisdn_id })
+        // Get MSISDN (subscription has msisdn = phone number)
+        let msisdnDetails: { phone_number: string; tier: string; region_code: string; status: string } | null = null
+        if (subscription.msisdn) {
+            const [msisdn] = await telecomModule.listMsisdnInventories({ phone_number: subscription.msisdn })
             if (msisdn) {
                 msisdnDetails = {
                     phone_number: msisdn.phone_number,
@@ -72,7 +72,11 @@ export async function GET(
 
         // Get family plan details
         const familyMembers = await telecomModule.listFamilyMembers({ subscription_id })
-        let familyPlanDetails = null
+        let familyPlanDetails: {
+            plan_name: string; member_type: string; joined_date: Date; total_members: number; max_members: number;
+            shared_data_quota_mb: number; shared_voice_quota_min: number; shared_data_used_mb: number; shared_voice_used_min: number;
+            other_members: any[]
+        } | null = null
 
         if (familyMembers.length > 0) {
             const member = familyMembers[0]
@@ -129,8 +133,8 @@ export async function GET(
                 account_age_days: Math.floor(
                     (Date.now() - new Date(subscription.created_at).getTime()) / (1000 * 60 * 60 * 24)
                 ),
-                renewal_date: subscription.renewal_date,
-                billing_day: subscription.billing_day
+                renewal_date: (subscription as any).renewal_date ?? subscription.end_date,
+                billing_day: (subscription as any).billing_day ?? null
             },
 
             // Phone Details
@@ -156,8 +160,8 @@ export async function GET(
                     ? Math.round(sortedUsage.reduce((sum, u) => sum + (u.voice_used_min || 0), 0) / sortedUsage.length)
                     : 0,
                 peak_data_month: sortedUsage.reduce((max, u) =>
-                    (u.data_used_mb || 0) > (max.data_used_mb || 0) ? u : max,
-                    sortedUsage[0] || {}
+                    (u.data_used_mb || 0) > ((max as any).data_used_mb || 0) ? u : max,
+                    (sortedUsage[0] || {}) as any
                 ),
                 total_months_active: sortedUsage.length
             },
@@ -196,7 +200,7 @@ export async function GET(
                     : 100,
                 recent_failures: failedPayments.slice(0, 5).map(p => ({
                     date: p.attempted_at,
-                    reason: p.failure_reason,
+                    reason: (p as any).failure_reason,
                     amount: p.amount
                 }))
             },

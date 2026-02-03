@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 import { Modules } from "@medusajs/framework/utils"
 
 /**
@@ -33,21 +33,20 @@ export async function POST(
             })
         }
 
-        if (subscription.status !== "suspended" && subscription.status !== "barred") {
+        if (subscription.status !== "suspended") {
             return res.status(400).json({
                 error: `Cannot reactivate subscription with status: ${subscription.status}`
             })
         }
 
         // Update subscription status
-        const updated = await telecomModule.updateSubscriptions(id, {
-            status: "active"
-        })
+        const updateResult = await telecomModule.updateSubscriptions({ id, status: "active" } as any)
+        const updated = Array.isArray(updateResult) ? updateResult[0] : updateResult
 
         console.log(`[Admin API] Subscription reactivated`)
 
         // Emit event
-        await eventBus.emit("telecom.subscription.reactivated", {
+        await eventBus.emit("telecom.subscription.reactivated" as any, {
             subscription_id: id,
             previous_status: subscription.status,
             payment_verified,

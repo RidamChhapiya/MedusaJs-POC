@@ -1,5 +1,5 @@
 import { MedusaContainer } from "@medusajs/framework/types"
-import TelecomCoreModuleService from "../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 import { Modules } from "@medusajs/framework/utils"
 
 /**
@@ -46,14 +46,12 @@ export default async function retryFailedPayments(container: MedusaContainer) {
                     })
 
                     if (subscription && subscription.status === "active") {
-                        await telecomService.updateSubscriptions(subscription.id, {
-                            status: "suspended"
-                        })
+                        await telecomService.updateSubscriptions({ id: subscription.id, status: "suspended" } as any)
 
                         logger.warn(`Suspended subscription ${subscription.id} due to payment failure`)
 
                         // Emit event
-                        await eventBus.emit("telecom.subscription.suspended", {
+                        await eventBus.emit("telecom.subscription.suspended" as any, {
                             subscription_id: subscription.id,
                             reason: "payment_failure",
                             payment_attempt_id: attempt.id
@@ -61,9 +59,7 @@ export default async function retryFailedPayments(container: MedusaContainer) {
                     }
 
                     // Mark attempt as cancelled
-                    await telecomService.updatePaymentAttempts(attempt.id, {
-                        status: "cancelled"
-                    })
+                    await telecomService.updatePaymentAttempts({ id: attempt.id, status: "cancelled" } as any)
 
                     continue
                 }
@@ -72,7 +68,7 @@ export default async function retryFailedPayments(container: MedusaContainer) {
                 const nextRetryDate = new Date(now)
                 nextRetryDate.setDate(nextRetryDate.getDate() + 2) // Retry in 2 days
 
-                const newAttempt = await telecomService.createPaymentAttempts({
+                const created = await telecomService.createPaymentAttempts({
                     subscription_id: attempt.subscription_id,
                     invoice_id: attempt.invoice_id,
                     attempt_number: attempt.attempt_number + 1,
@@ -81,12 +77,13 @@ export default async function retryFailedPayments(container: MedusaContainer) {
                     next_retry_date: nextRetryDate,
                     attempted_at: now
                 })
+                const newAttempt = Array.isArray(created) ? created[0] : created
 
                 logger.info(`Created retry attempt ${newAttempt.attempt_number} for subscription ${attempt.subscription_id}`)
 
                 // TODO: Integrate with actual payment gateway
                 // For now, emit event for payment processing
-                await eventBus.emit("telecom.payment.retry", {
+                await eventBus.emit("telecom.payment.retry" as any, {
                     payment_attempt_id: newAttempt.id,
                     subscription_id: attempt.subscription_id,
                     amount: attempt.amount,

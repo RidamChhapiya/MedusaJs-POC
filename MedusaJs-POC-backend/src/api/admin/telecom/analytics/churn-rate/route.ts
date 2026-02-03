@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Admin API: Churn Rate Analytics
@@ -15,8 +15,8 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
         // Calculate churn: cancelled subscriptions / total subscriptions
         const totalSubs = allSubscriptions.length
         const cancelledSubs = allSubscriptions.filter(s =>
-            s.metadata?.cancelled_date &&
-            new Date(s.metadata.cancelled_date) > new Date(Date.now() - parseInt(period_days) * 24 * 60 * 60 * 1000)
+            (s as any).metadata?.cancelled_date &&
+            new Date((s as any).metadata.cancelled_date) > new Date(Date.now() - parseInt(period_days) * 24 * 60 * 60 * 1000)
         ).length
 
         const churnRate = totalSubs > 0 ? (cancelledSubs / totalSubs) * 100 : 0

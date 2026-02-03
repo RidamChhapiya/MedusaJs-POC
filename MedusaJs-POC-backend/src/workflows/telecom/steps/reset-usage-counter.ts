@@ -1,5 +1,5 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import TelecomCoreModuleService from "../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 export type ResetUsageCounterInput = {
     subscription: any
@@ -52,13 +52,15 @@ export const resetUsageCounterStep = createStep(
             })
         }
 
-        // Create new usage counter
-        const usageCounter = await telecomService.createUsageCounters({
+        // Create new usage counter (model: period_month, period_year, data_used_mb, voice_used_min)
+        const created = await telecomService.createUsageCounters({
             subscription_id: input.subscription.id,
-            cycle_month,
-            data_used: 0,
-            voice_used: 0
-        })
+            period_month: new Date().getMonth() + 1,
+            period_year: new Date().getFullYear(),
+            data_used_mb: 0,
+            voice_used_min: 0
+        } as any)
+        const usageCounter = Array.isArray(created) ? created[0] : created
 
         console.log(`[Reset Usage] ✅ Created usage counter: ${usageCounter.id}`)
 
