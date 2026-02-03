@@ -24,3 +24,6 @@ build
 !.yarn/versions
 
 .medusa
+
+# Optional project-root admin (we run from .medusa/server so admin is at .medusa/server/public/admin)
+public/admin

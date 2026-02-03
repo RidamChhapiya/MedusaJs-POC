@@ -3,6 +3,12 @@ import { loadEnv, defineConfig } from '@medusajs/framework/utils'
 loadEnv(process.env.NODE_ENV || 'development', process.cwd())
 
 module.exports = defineConfig({
+  // Admin: in production we run from .medusa/server (see scripts/start-from-build.cjs), so the
+  // loader finds the admin at .medusa/server/public/admin automatically. No copy step needed.
+  // Set DISABLE_ADMIN=true to skip serving admin.
+  admin: {
+    disable: process.env.DISABLE_ADMIN === "true",
+  },
   projectConfig: {
     databaseUrl: process.env.DATABASE_URL,
     http: {

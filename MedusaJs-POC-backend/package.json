@@ -17,7 +17,7 @@
     "seed": "npx medusa exec ./src/scripts/seed.ts",
     "seed:gear": "npx medusa exec ./src/scripts/seed-gear-products.ts",
     "seed:shipping": "npx medusa exec ./src/scripts/seed-shipping.ts",
-    "start": "npx medusa start",
+    "start": "node scripts/start-from-build.cjs",
     "dev": "npx medusa develop",
     "test:integration:http": "TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
     "test:integration:modules": "TEST_TYPE=integration:modules NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
