@@ -1,6 +1,6 @@
 import { createWorkflow, WorkflowResponse } from "@medusajs/framework/workflows-sdk"
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import TelecomCoreModuleService from "../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 import { Modules } from "@medusajs/framework/utils"
 
 /**
@@ -86,7 +86,7 @@ const emitContractCreatedEventStep = createStep(
     async ({ contract }: any, { container }) => {
         const eventBus = container.resolve(Modules.EVENT_BUS)
 
-        await eventBus.emit("telecom.device_contract.created", {
+        await eventBus.emit("telecom.device_contract.created" as any, {
             contract_id: contract.id,
             subscription_id: contract.subscription_id,
             device_price: contract.device_price,

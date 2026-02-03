@@ -1,6 +1,6 @@
 import { createWorkflow, WorkflowResponse } from "@medusajs/framework/workflows-sdk"
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import TelecomCoreModuleService from "../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 import { Modules } from "@medusajs/framework/utils"
 import { calculateProration } from "../../utils/proration"
 
@@ -75,7 +75,7 @@ const updateSubscriptionPlanStep = createStep(
 
         // Update subscription metadata to track plan change
         const [subscription] = await telecomModule.listSubscriptions({ id: subscription_id })
-        const metadata = subscription.metadata || {}
+        const metadata = (subscription as any).metadata || {}
 
         const planHistory = metadata.plan_history || []
         planHistory.push({
@@ -84,14 +84,15 @@ const updateSubscriptionPlanStep = createStep(
             changed_at: new Date().toISOString()
         })
 
-        const updated = await telecomModule.updateSubscriptions(subscription_id, {
+        const updated = await telecomModule.updateSubscriptions({
+            id: subscription_id,
             metadata: {
                 ...metadata,
                 current_plan_config_id: new_plan_config_id,
                 previous_plan_config_id: old_plan_config_id,
                 plan_history: planHistory
             }
-        })
+        } as any)
 
         console.log(`[Plan Change] Updated subscription metadata`)
 
@@ -107,14 +108,15 @@ const updateSubscriptionPlanStep = createStep(
             const { subscription_id, old_plan_config_id } = compensationData
 
             const [subscription] = await telecomModule.listSubscriptions({ id: subscription_id })
-            const metadata = subscription.metadata || {}
+            const metadata = (subscription as any).metadata || {}
 
-            await telecomModule.updateSubscriptions(subscription_id, {
+            await telecomModule.updateSubscriptions({
+                id: subscription_id,
                 metadata: {
                     ...metadata,
                     current_plan_config_id: old_plan_config_id
                 }
-            })
+            } as any)
 
             console.log(`[Plan Change] Reverted plan change`)
         }
@@ -141,11 +143,11 @@ const resetUsageCounterStep = createStep(
         })
 
         if (usageCounters.length > 0) {
-            // Reset to 0 for plan change
-            await telecomModule.updateUsageCounters(usageCounters[0].id, {
+            await telecomModule.updateUsageCounters({
+                id: usageCounters[0].id,
                 data_used_mb: 0,
                 voice_used_min: 0
-            })
+            } as any)
 
             console.log(`[Plan Change] Reset usage counter`)
         }
@@ -162,7 +164,7 @@ const emitPlanChangedEventStep = createStep(
     async ({ subscription_id, old_plan_config_id, new_plan_config_id, proration }: any, { container }) => {
         const eventBus = container.resolve(Modules.EVENT_BUS)
 
-        await eventBus.emit("telecom.plan.changed", {
+        await eventBus.emit("telecom.plan.changed" as any, {
             subscription_id,
             old_plan_config_id,
             new_plan_config_id,

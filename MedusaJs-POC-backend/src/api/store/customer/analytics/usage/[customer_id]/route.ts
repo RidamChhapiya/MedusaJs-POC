@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Usage Analytics API
@@ -46,36 +46,41 @@ export async function GET(
 
                 if (!counter) return null
 
-                const dataUsagePercent = counter.data_quota_mb > 0
-                    ? Math.round((counter.data_used_mb / counter.data_quota_mb) * 100)
+                const quotaMb = (counter as any).data_quota_mb ?? 51200
+                const quotaMin = (counter as any).voice_quota_min ?? 999999
+                const dataUsagePercent = quotaMb > 0
+                    ? Math.round((counter.data_used_mb / quotaMb) * 100)
                     : 0
 
-                const voiceUsagePercent = counter.voice_quota_min > 0 && counter.voice_quota_min < 999999
-                    ? Math.round((counter.voice_used_min / counter.voice_quota_min) * 100)
+                const voiceUsagePercent = quotaMin > 0 && quotaMin < 999999
+                    ? Math.round((counter.voice_used_min / quotaMin) * 100)
                     : 0
+
+                const periodStart = (counter as any).billing_period_start ?? new Date(counter.period_year, (counter.period_month ?? 1) - 1, 1)
+                const periodEnd = (counter as any).billing_period_end ?? new Date(counter.period_year, counter.period_month ?? 1, 0) // day 0 = last day of prev month
 
                 return {
                     msisdn: sub.msisdn,
                     data: {
                         used_mb: counter.data_used_mb,
-                        quota_mb: counter.data_quota_mb,
-                        remaining_mb: counter.data_quota_mb - counter.data_used_mb,
+                        quota_mb: quotaMb,
+                        remaining_mb: quotaMb - counter.data_used_mb,
                         usage_percent: dataUsagePercent,
                         status: dataUsagePercent > 90 ? "critical" : dataUsagePercent > 70 ? "warning" : "normal"
                     },
                     voice: {
                         used_min: counter.voice_used_min,
-                        quota_min: counter.voice_quota_min,
-                        remaining_min: counter.voice_quota_min - counter.voice_used_min,
+                        quota_min: quotaMin,
+                        remaining_min: quotaMin - counter.voice_used_min,
                         usage_percent: voiceUsagePercent,
-                        is_unlimited: counter.voice_quota_min >= 999999,
+                        is_unlimited: quotaMin >= 999999,
                         status: voiceUsagePercent > 90 ? "critical" : voiceUsagePercent > 70 ? "warning" : "normal"
                     },
                     billing_period: {
-                        start: counter.billing_period_start,
-                        end: counter.billing_period_end,
+                        start: periodStart,
+                        end: periodEnd,
                         days_remaining: Math.ceil(
-                            (new Date(counter.billing_period_end).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                            (new Date(periodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                         )
                     }
                 }
@@ -107,7 +112,7 @@ export async function GET(
 }
 
 function generateRecommendations(analytics: any[]) {
-    const recommendations = []
+    const recommendations: { type: string; severity: string; message: string; action: string }[] = []
 
     for (const sub of analytics) {
         if (sub.data.usage_percent > 90) {

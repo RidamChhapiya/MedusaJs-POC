@@ -24,7 +24,7 @@ export async function POST(
             doCapture: body.capture !== false,
             doShip: body.ship !== false,
             doDeliver: body.deliver !== false,
-            actorId: req.auth_context?.actor_id
+            actorId: (req as { auth_context?: { actor_id?: string } }).auth_context?.actor_id
         })
 
         return res.json({

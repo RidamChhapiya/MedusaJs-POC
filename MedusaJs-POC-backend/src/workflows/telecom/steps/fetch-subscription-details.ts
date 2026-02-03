@@ -1,6 +1,6 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
 import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import TelecomCoreModuleService from "../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 export type FetchSubscriptionDetailsInput = {
     subscription_id: string
@@ -42,13 +42,13 @@ export const fetchSubscriptionDetailsStep = createStep(
         const subscription = subscriptions[0]
         console.log(`[Fetch Details] Found subscription for customer ${subscription.customer_id}`)
 
-        // Fetch MSISDN
+        // Fetch MSISDN (subscription has msisdn = phone number)
         const msisdns = await telecomService.listMsisdnInventories({
-            id: subscription.msisdn_id
+            phone_number: subscription.msisdn
         })
 
         if (msisdns.length === 0) {
-            throw new Error(`MSISDN ${subscription.msisdn_id} not found`)
+            throw new Error(`MSISDN ${subscription.msisdn} not found`)
         }
 
         const msisdn = msisdns[0]

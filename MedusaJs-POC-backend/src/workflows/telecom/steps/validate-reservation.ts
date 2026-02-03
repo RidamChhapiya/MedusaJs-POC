@@ -1,5 +1,5 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import TelecomCoreModuleService from "../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 export type ValidateReservationInput = {
     plan_items: Array<{
@@ -28,7 +28,7 @@ export const validateReservationStep = createStep(
 
         const telecomService: TelecomCoreModuleService = container.resolve("telecom")
 
-        const validatedItems = []
+        const validatedItems: { line_item_id: string; msisdn_id: string; phone_number: string }[] = []
 
         for (const item of input.plan_items) {
             console.log(`🔍 [Workflow Step 2] Validating item:`, item.line_item_id)

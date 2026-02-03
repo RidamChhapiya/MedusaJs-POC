@@ -1,7 +1,7 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
 import { Client } from "pg"
-import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Recharge API
@@ -77,7 +77,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             subscription = existingSubscriptions[0]
 
             const currentEndDate = new Date(subscription.end_date)
-            const newEndDate = new Date(currentEndDate.getTime() + plan.validity_days * 24 * 60 * 60 * 1000)
+            const validityDays = plan.validity_days ?? 30
+            const newEndDate = new Date(currentEndDate.getTime() + validityDays * 24 * 60 * 60 * 1000)
 
             await telecomModule.updateSubscriptions({
                 id: subscription.id,
@@ -91,61 +92,61 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                 subscription_id: subscription.id
             })
 
+            // UsageCounter model has only period_month, period_year, data_used_mb, voice_used_min (no quota fields)
             if (counters.length > 0) {
                 await telecomModule.updateUsageCounters({
                     id: counters[0].id,
-                    billing_period_end: newEndDate,
-                    data_quota_mb: counters[0].data_quota_mb + plan.data_quota_mb,
-                    voice_quota_min: counters[0].voice_quota_min + plan.voice_quota_min,
-                })
+                    data_used_mb: counters[0].data_used_mb,
+                    voice_used_min: counters[0].voice_used_min,
+                } as any)
             }
 
         } else {
-            // Create new subscription
-            subscription = await telecomModule.createSubscriptions({
+            // Create new subscription (service may return single object or array)
+            const created = await telecomModule.createSubscriptions({
                 customer_id: msisdn.customer_id,
                 plan_id: plan.id,
                 msisdn: nexel_number,
                 status: "active",
                 start_date: new Date(),
-                end_date: new Date(Date.now() + plan.validity_days * 24 * 60 * 60 * 1000),
+                end_date: new Date(Date.now() + (plan.validity_days ?? 30) * 24 * 60 * 60 * 1000),
                 data_balance_mb: plan.data_quota_mb,
                 voice_balance_min: plan.voice_quota_min,
                 auto_renew: false,
             })
+            subscription = Array.isArray(created) ? created[0] : created
 
-            // Create usage counter
+            // Create usage counter (model: subscription_id, period_month, period_year, data_used_mb, voice_used_min)
+            const nowDate = new Date()
             await telecomModule.createUsageCounters({
                 subscription_id: subscription.id,
-                billing_period_start: new Date(),
-                billing_period_end: new Date(Date.now() + plan.validity_days * 24 * 60 * 60 * 1000),
+                period_month: nowDate.getMonth() + 1,
+                period_year: nowDate.getFullYear(),
                 data_used_mb: 0,
                 voice_used_min: 0,
-                data_quota_mb: plan.data_quota_mb,
-                voice_quota_min: plan.voice_quota_min,
             })
         }
 
         // Step 5: Create invoice
         const now = new Date()
         const invoice = await telecomModule.createInvoices({
-            customer_id: msisdn.customer_id,
+            customer_id: msisdn.customer_id ?? "",
             subscription_id: subscription.id,
             invoice_number: `RECH-${Date.now()}`,
-            subtotal: plan.price, // Required field
-            tax_amount: 0, // No tax for recharge
+            subtotal: plan.price,
+            tax_amount: 0,
             total_amount: plan.price,
-            issue_date: now, // Required field
+            issue_date: now,
             due_date: now,
-            status: "paid", // Mock: auto-paid
-            paid_date: now, // Set paid_date since status is "paid"
-            line_items: [{ // Required field
+            status: "paid",
+            paid_date: now,
+            line_items: [{
                 description: `Recharge: ${plan.name}${plan.validity_days ? ` - ${plan.validity_days} days` : ''}`,
                 quantity: 1,
                 unit_price: plan.price,
                 amount: plan.price
             }]
-        })
+        } as any)
 
         // Step 6: Create Medusa Order for tracking (digital delivery)
         let order: any = null
@@ -159,10 +160,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             const items: any[] = []
             if (plan.product_id) {
                 const productModule = req.scope.resolve("product")
-                const product = await productModule.retrieve(plan.product_id, {
-                    relations: ["variants"]
-                })
-                const variant = product.variants?.[0]
+                const [product] = await productModule.listProducts({ id: plan.product_id }, { relations: ["variants"] })
+                const variant = product?.variants?.[0]
                 if (variant) {
                     items.push({
                         variant_id: variant.id,

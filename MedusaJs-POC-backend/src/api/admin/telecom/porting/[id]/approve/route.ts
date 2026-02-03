@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Admin API: Approve Porting Request
@@ -31,7 +31,7 @@ export async function POST(
             updateData.scheduled_date = new Date(scheduled_date)
         }
 
-        await telecomModule.updatePortingRequests(id, updateData)
+        await telecomModule.updatePortingRequests({ id, ...updateData } as any)
 
         return res.json({
             success: true,

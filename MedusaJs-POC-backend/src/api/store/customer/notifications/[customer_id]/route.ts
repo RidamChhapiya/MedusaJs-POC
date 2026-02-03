@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Notifications API
@@ -19,7 +19,8 @@ export async function GET(
     const { customer_id } = req.params
 
     try {
-        const notifications = []
+        type Notif = { id: string; type: string; severity: string; title: string; message: string; action: { label: string; url: string }; created_at: Date; read: boolean }
+        const notifications: Notif[] = []
 
         // Get all subscriptions
         const subscriptions = await telecomModule.listSubscriptions({
@@ -34,9 +35,10 @@ export async function GET(
             const counter = counters[0]
 
             if (counter) {
-                // Data usage alerts
-                const dataPercent = counter.data_quota_mb > 0
-                    ? (counter.data_used_mb / counter.data_quota_mb) * 100
+                // Data usage alerts (UsageCounter has data_used_mb; quota may come from plan, use default if missing)
+                const dataQuotaMb = (counter as any).data_quota_mb ?? 51200
+                const dataPercent = dataQuotaMb > 0
+                    ? (counter.data_used_mb / dataQuotaMb) * 100
                     : 0
 
                 if (dataPercent > 90) {

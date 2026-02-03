@@ -105,7 +105,7 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                     id: v.id,
                     title: v.title,
                     sku: v.sku,
-                    tier: v.options?.Tier
+                    tier: (v as any).options?.Tier
                 }))
             },
             next_steps: [

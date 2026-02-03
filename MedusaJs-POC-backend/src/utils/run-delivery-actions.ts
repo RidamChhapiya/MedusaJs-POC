@@ -62,9 +62,9 @@ export async function runOrderDeliveryActions(
     if (doCapture && order.payment_collections?.length) {
         const paymentCollectionId = order.payment_collections[0].id
         const payments = await paymentModule.listPayments({
-            payment_collection_id: [paymentCollectionId]
+            ...({ payment_collection_id: [paymentCollectionId] } as any)
         })
-        const toCapture = payments.filter((p: { captured_at?: Date | null }) => !p.captured_at)
+        const toCapture = payments.filter((p) => !p.captured_at)
         for (const payment of toCapture) {
             try {
                 await capturePaymentWorkflow(scope).run({
@@ -110,8 +110,7 @@ export async function runOrderDeliveryActions(
 
     if (doDeliver && order.fulfillments?.length) {
         const toDeliver = order.fulfillments.filter(
-            (f: { shipped_at?: Date | null; delivered_at?: Date | null }) =>
-                f.shipped_at && !f.delivered_at
+            (f) => f.shipped_at && !f.delivered_at
         )
         for (const f of toDeliver) {
             try {

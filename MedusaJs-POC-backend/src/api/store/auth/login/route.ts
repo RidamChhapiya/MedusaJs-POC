@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Customer Login API
@@ -21,7 +21,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             })
         }
 
-        let customerProfile = null
+        type Profile = { customer_id: string; full_name: string; primary_phone: string; is_nexel_subscriber?: boolean; nexel_numbers?: string[]; kyc_status?: string }
+        let customerProfile: Profile | null = null
 
         // Check if phone_number is a Nexel number
         const nexelNumber = await telecomModule.listMsisdnInventories({
@@ -34,13 +35,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             const profiles = await telecomModule.listCustomerProfiles({
                 customer_id: nexelNumber[0].customer_id
             })
-            customerProfile = profiles[0]
+            customerProfile = (profiles[0] as unknown as Profile) ?? null
         } else {
             // Login with non-Nexel number (primary_phone)
             const profiles = await telecomModule.listCustomerProfiles({
                 primary_phone: phone_number
             })
-            customerProfile = profiles[0]
+            customerProfile = (profiles[0] as unknown as Profile) ?? null
         }
 
         if (!customerProfile) {

@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Admin API: Get Subscription Details
@@ -27,11 +27,11 @@ export async function GET(
             })
         }
 
-        // Get MSISDN details
-        let msisdnDetails = null
-        if (subscription.msisdn_id) {
-            const [msisdn] = await telecomModule.listMsisdnInventory({ id: subscription.msisdn_id })
-            msisdnDetails = msisdn || null
+        // Get MSISDN details (subscription has msisdn = phone number)
+        let msisdnDetails: { id: string; phone_number: string } | null = null
+        if (subscription.msisdn) {
+            const [inv] = await telecomModule.listMsisdnInventories({ phone_number: subscription.msisdn })
+            msisdnDetails = inv || null
         }
 
         // Get current usage

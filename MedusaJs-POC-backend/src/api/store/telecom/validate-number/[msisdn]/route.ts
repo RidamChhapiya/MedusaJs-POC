@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Store API Route: Validate Phone Number for Recharge
@@ -23,7 +23,7 @@ export async function GET(
         console.log(`[Number Validation] Checking if ${msisdn} is our customer...`)
 
         // Search for the number in MSISDN Inventory
-        const [msisdnRecord] = await telecomModule.listMsisdnInventory({
+        const [msisdnRecord] = await telecomModule.listMsisdnInventories({
             msisdn
         })
 
@@ -42,7 +42,7 @@ export async function GET(
         })
 
         const hasActiveSubscription = subscriptions.some(
-            sub => sub.status === "active" || sub.status === "provisioned"
+            sub => sub.status === "active" || (sub as any).status === "provisioned"
         )
 
         if (!hasActiveSubscription) {

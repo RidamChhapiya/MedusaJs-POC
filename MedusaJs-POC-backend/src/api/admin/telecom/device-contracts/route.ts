@@ -1,5 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { createDeviceContractWorkflow } from "../../../../workflows/device/create-device-contract"
+import type TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Admin API: Create Device Contract
@@ -74,7 +75,8 @@ export async function GET(
         if (subscription_id) filters.subscription_id = subscription_id
         if (status) filters.status = status
 
-        const contracts = await telecomModule.listDeviceContracts(filters, {
+        const telecomModuleTyped = telecomModule as TelecomCoreModuleService
+        const contracts = await telecomModuleTyped.listDeviceContracts(filters, {
             take: parseInt(limit),
             skip: parseInt(offset)
         })

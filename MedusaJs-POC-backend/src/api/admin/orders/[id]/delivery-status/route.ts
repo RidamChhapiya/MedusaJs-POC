@@ -35,16 +35,16 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
         if (has_payment_collection && order.payment_collections?.length) {
             const payments = await paymentModule.listPayments({
-                payment_collection_id: [order.payment_collections[0].id]
+                ...({ payment_collection_id: [order.payment_collections[0].id] } as any)
             })
-            payment_captured = payments.length > 0 && payments.every((p: { captured_at?: Date | null }) => !!p.captured_at)
+            payment_captured = payments.length > 0 && payments.every((p) => !!p.captured_at)
         } else {
             payment_captured = false
         }
 
         const fulfillments = order.fulfillments || []
-        const all_shipped = fulfillments.length > 0 && fulfillments.every((f: { shipped_at?: Date | null }) => !!f.shipped_at)
-        const all_delivered = fulfillments.length > 0 && fulfillments.every((f: { delivered_at?: Date | null }) => !!f.delivered_at)
+        const all_shipped = fulfillments.length > 0 && fulfillments.every((f) => !!f.shipped_at)
+        const all_delivered = fulfillments.length > 0 && fulfillments.every((f) => !!f.delivered_at)
         const has_items_to_fulfill = !!(order.items?.length)
 
         return res.json({
@@ -60,7 +60,7 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
                 all_shipped: all_shipped,
                 all_delivered: all_delivered,
                 can_ship: has_items_to_fulfill,
-                can_deliver: fulfillments.some((f: { shipped_at?: Date | null; delivered_at?: Date | null }) => !!f.shipped_at && !f.delivered_at)
+                can_deliver: fulfillments.some((f) => !!f.shipped_at && !f.delivered_at)
             }
         })
     } catch (error: any) {

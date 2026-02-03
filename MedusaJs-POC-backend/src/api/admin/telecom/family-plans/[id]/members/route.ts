@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Admin API: Add Family Member
@@ -11,7 +11,7 @@ export async function POST(
     res: MedusaResponse
 ) {
     const { id } = req.params
-    const { subscription_id } = req.body as { subscription_id: string }
+    const subscription_id = (req.body as any)?.subscription_id as string
     const telecomModule: TelecomCoreModuleService = req.scope.resolve("telecom")
 
     try {
@@ -39,9 +39,7 @@ export async function POST(
         })
 
         // Update member count
-        await telecomModule.updateFamilyPlans(id, {
-            current_members: familyPlan.current_members + 1
-        })
+        await telecomModule.updateFamilyPlans({ id, current_members: familyPlan.current_members + 1 } as any)
 
         return res.json({
             success: true,

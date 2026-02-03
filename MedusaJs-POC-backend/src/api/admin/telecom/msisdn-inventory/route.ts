@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Admin API: MSISDN Inventory Management
@@ -152,18 +152,18 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             return res.status(400).json({ error: "Invalid input: msisdns array required" })
         }
 
-        const created = []
-        const errors = []
+        const created: any[] = []
+        const errors: { phone_number: string; error: string }[] = []
 
         for (const msisdn of msisdns) {
             try {
                 const newMsisdn = await telecomModule.createMsisdnInventories({
                     phone_number: msisdn.phone_number,
                     status: "available",
-                    tier: msisdn.tier || "standard",
+                    tier: ((msisdn.tier || "standard") as "standard" | "gold" | "platinum"),
                     region_code: msisdn.region_code || "DEFAULT"
                 })
-                created.push(newMsisdn)
+                created.push(Array.isArray(newMsisdn) ? newMsisdn[0] : newMsisdn)
             } catch (error) {
                 errors.push({
                     phone_number: msisdn.phone_number,

@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 import { Modules } from "@medusajs/framework/utils"
 
 /**
@@ -46,14 +46,13 @@ export async function POST(
         gracePeriodEnd.setDate(gracePeriodEnd.getDate() + grace_period_days)
 
         // Update subscription status
-        const updated = await telecomModule.updateSubscriptions(id, {
-            status: "suspended"
-        })
+        const updateResult = await telecomModule.updateSubscriptions({ id, status: "suspended" } as any)
+        const updated = Array.isArray(updateResult) ? updateResult[0] : updateResult
 
         console.log(`[Admin API] Subscription suspended until ${gracePeriodEnd.toISOString()}`)
 
         // Emit event
-        await eventBus.emit("telecom.subscription.suspended", {
+        await eventBus.emit("telecom.subscription.suspended" as any, {
             subscription_id: id,
             reason: reason || "Manual suspension",
             grace_period_end: gracePeriodEnd,

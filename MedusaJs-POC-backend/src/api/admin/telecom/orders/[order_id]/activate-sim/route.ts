@@ -1,5 +1,5 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import TelecomCoreModuleService from "../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 
 /**
  * Activate SIM after order fulfillment
@@ -58,18 +58,18 @@ export async function POST(
         await telecomModule.updateSubscriptions({
             id: subscription_id,
             status: "active"
-        })
+        } as any)
         console.log(`[SIM Activation] Activated subscription ${subscription_id}`)
 
         // Update order metadata
-        await orderModule.updateOrders({
+        await orderModule.updateOrders([{
             id: order_id,
             metadata: {
-                ...order.metadata,
+                ...(order.metadata || {}),
                 sim_activated: true,
                 activated_at: new Date().toISOString()
             }
-        })
+        }] as any)
 
         return res.json({
             success: true,

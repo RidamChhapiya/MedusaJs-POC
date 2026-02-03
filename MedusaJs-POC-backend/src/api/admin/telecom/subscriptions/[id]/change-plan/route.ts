@@ -1,6 +1,6 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { changePlanWorkflow } from "../../../../../../workflows/telecom/change-plan"
-import TelecomCoreModuleService from "../../../../../../modules/telecom-core/service"
+import TelecomCoreModuleService from "@modules/telecom-core/service"
 import { Modules } from "@medusajs/framework/utils"
 
 /**
@@ -13,11 +13,10 @@ export async function POST(
     res: MedusaResponse
 ) {
     const { id } = req.params
-    const { new_plan_config_id, old_plan_price, new_plan_price } = req.body as {
-        new_plan_config_id: string
-        old_plan_price: number
-        new_plan_price: number
-    }
+    const body = req.body as any
+    const new_plan_config_id = body?.new_plan_config_id as string
+    const old_plan_price = body?.old_plan_price as number
+    const new_plan_price = body?.new_plan_price as number
 
     const telecomModule: TelecomCoreModuleService = req.scope.resolve("telecom")
 
@@ -33,7 +32,7 @@ export async function POST(
             })
         }
 
-        const oldPlanConfigId = subscription.metadata?.current_plan_config_id || null
+        const oldPlanConfigId = (subscription as any).metadata?.current_plan_config_id || null
 
         // Execute workflow
         const { result } = await changePlanWorkflow(req.scope).run({
