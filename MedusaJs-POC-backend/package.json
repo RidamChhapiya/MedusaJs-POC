@@ -13,11 +13,11 @@
     "medusa"
   ],
   "scripts": {
-    "build": "npx medusa build",
+    "build": "npx medusa build && node scripts/copy-admin-build.cjs",
     "seed": "npx medusa exec ./src/scripts/seed.ts",
     "seed:gear": "npx medusa exec ./src/scripts/seed-gear-products.ts",
     "seed:shipping": "npx medusa exec ./src/scripts/seed-shipping.ts",
-    "start": "node scripts/start-from-build.cjs",
+    "start": "npx medusa start",
     "dev": "npx medusa develop",
     "test:integration:http": "TEST_TYPE=integration:http NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
     "test:integration:modules": "TEST_TYPE=integration:modules NODE_OPTIONS=--experimental-vm-modules jest --silent=false --runInBand --forceExit",
