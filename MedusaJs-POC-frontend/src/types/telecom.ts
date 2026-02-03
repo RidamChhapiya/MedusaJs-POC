@@ -87,6 +87,9 @@ export interface PurchaseSimPayload {
     customer_id: string
     sim_password?: string
     payment_method?: string
+    /** When paying with Stripe (card), set after confirmCardPayment succeeds */
+    payment_collection_id?: string
+    payment_session_id?: string
     shipping_address?: string
     shipping_city?: string
     shipping_state?: string
@@ -98,6 +101,9 @@ export interface RechargePayload {
     nexel_number: string
     plan_id: string
     payment_method?: string
+    /** When paying with Stripe (card), set after confirmCardPayment succeeds */
+    payment_collection_id?: string
+    payment_session_id?: string
     recharge_for_self?: boolean
 }
 

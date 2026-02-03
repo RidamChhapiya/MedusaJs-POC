@@ -25,6 +25,7 @@ export default async function BuySimPage(props: Props) {
         <BuySimWizard
             customer={customer}
             currencyCode={region?.currency_code ?? "inr"}
+            regionId={region?.id ?? undefined}
             paymentMethods={paymentMethods}
         />
     )

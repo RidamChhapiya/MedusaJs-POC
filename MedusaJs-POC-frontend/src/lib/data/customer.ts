@@ -42,7 +42,7 @@ export const retrieveCustomer =
       .then(({ customer }) => customer)
       .catch(() => null)
   }
-
+//cache: "no-cache",
 export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
   const headers = {
     ...(await getAuthHeaders()),

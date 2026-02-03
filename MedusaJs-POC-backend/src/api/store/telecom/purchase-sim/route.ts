@@ -26,6 +26,9 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             preferred_number, // Optional: customer can choose
             sim_password, // Password for Nexel number login
             payment_method = "manual",  // Default to manual payment for POC
+            // Stripe flow: when frontend already confirmed card payment
+            payment_collection_id,
+            payment_session_id,
             // Shipping address for physical SIM delivery
             shipping_address,
             shipping_city,
@@ -33,6 +36,8 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
             shipping_pincode,
             shipping_landmark
         } = req.body as any
+
+        const isStripePayment = Boolean(payment_collection_id && payment_session_id)
 
 
         // Validate shipping address
@@ -334,8 +339,51 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
                 await eventBus.emit({ name: "order.placed", data: { id: order.id } })
             }
 
+            // Stripe: authorize existing session (already confirmed on frontend), capture, link, activate
+            if (isStripePayment && order) {
+                try {
+                    const paymentModule = req.scope.resolve("payment")
+                    await paymentModule.authorizePaymentSession(payment_session_id, {})
+                    const payments = await paymentModule.listPayments({
+                        payment_collection_id: [payment_collection_id],
+                    } as any)
+                    if (payments.length > 0) {
+                        await paymentModule.capturePayment({ payment_id: payments[0].id })
+                        await telecomModule.updateMsisdnInventories({
+                            id: msisdn.id,
+                            status: "active",
+                        })
+                        await telecomModule.updateSubscriptions({
+                            id: subscription.id,
+                            status: "active",
+                        })
+                        msisdn.status = "active"
+                        subscription.status = "active"
+                        const client = new Client({
+                            connectionString: process.env.DATABASE_URL,
+                        })
+                        await client.connect()
+                        await client.query(
+                            `INSERT INTO order_payment_collection (id, order_id, payment_collection_id)
+                             VALUES ($1, $2, $3)
+                             ON CONFLICT DO NOTHING`,
+                            [
+                                `ordpaycol_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                                order.id,
+                                payment_collection_id,
+                            ]
+                        )
+                        await client.end()
+                        console.log(`[SIM Purchase] Stripe payment captured and linked to order ${order.id}`)
+                    }
+                } catch (stripeErr) {
+                    console.error("[SIM Purchase] Stripe capture/link failed:", stripeErr)
+                    // Don't fail the response - order and SIM are created; admin can reconcile
+                }
+            }
+
             // Create payment collection and capture for manual payment
-            if (payment_method === "manual" && order) {
+            if (payment_method === "manual" && order && !isStripePayment) {
                 try {
                     console.log(`[SIM Purchase] Creating payment collection for order ${order.id}`)
 

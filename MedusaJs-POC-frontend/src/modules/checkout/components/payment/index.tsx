@@ -2,7 +2,7 @@
 
 import { RadioGroup } from "@headlessui/react"
 import { isStripeLike, paymentInfoMap } from "@lib/constants"
-import { initiatePaymentSession } from "@lib/data/cart"
+import { initiatePaymentSession, clearCartAndGoToStore } from "@lib/data/cart"
 import { CheckCircleSolid, CreditCard } from "@medusajs/icons"
 import { Button, Container, Heading, Text, clx } from "@medusajs/ui"
 import ErrorMessage from "@modules/checkout/components/error-message"
@@ -12,6 +12,8 @@ import PaymentContainer, {
 import Divider from "@modules/common/components/divider"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
+
+const PAYMENT_SESSION_DELETE_ERROR = "Could not delete all payment sessions"
 
 const Payment = ({
   cart,
@@ -42,9 +44,13 @@ const Payment = ({
     setError(null)
     setSelectedPaymentMethod(method)
     if (isStripeLike(method)) {
-      await initiatePaymentSession(cart, {
-        provider_id: method,
-      })
+      try {
+        await initiatePaymentSession(cart, {
+          provider_id: method,
+        })
+      } catch (err: any) {
+        setError(err?.message ?? "Failed to set payment method")
+      }
     }
   }
 
@@ -94,7 +100,7 @@ const Payment = ({
         )
       }
     } catch (err: any) {
-      setError(err.message)
+      setError(err?.message ?? "Something went wrong")
     } finally {
       setIsLoading(false)
     }
@@ -182,6 +188,24 @@ const Payment = ({
             error={error}
             data-testid="payment-method-error-message"
           />
+
+          {error && error.includes(PAYMENT_SESSION_DELETE_ERROR) && (
+            <div className="mt-4 p-4 rounded-lg bg-ui-bg-base border border-ui-border-base">
+              <Text className="text-ui-fg-base mb-2">
+                This cart&apos;s payment options are stuck. Start with a fresh cart and add items again.
+              </Text>
+              <form action={clearCartAndGoToStore}>
+                <input
+                  type="hidden"
+                  name="country_code"
+                  value={pathname.split("/")[1] || "in"}
+                />
+                <Button type="submit" variant="secondary" size="small">
+                  Start with a fresh cart
+                </Button>
+              </form>
+            </div>
+          )}
 
           <Button
             size="large"

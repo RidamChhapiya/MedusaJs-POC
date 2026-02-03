@@ -8,18 +8,27 @@ import { Button } from "@medusajs/ui"
 import Spinner from "@modules/common/icons/spinner"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { HttpTypes } from "@medusajs/types"
-import { paymentInfoMap } from "@lib/constants"
+import { paymentInfoMap, isStripeLike } from "@lib/constants"
 import { CreditCard } from "@medusajs/icons"
+import { telecomClient } from "@lib/telecom-client"
+import BuySimStripeCardModal from "@modules/telecom/components/buy-sim-stripe-modal"
 
 type PaymentProvider = { id: string }
+
+type StripeSession = {
+    client_secret: string
+    payment_collection_id: string
+    payment_session_id: string
+}
 
 type BuySimWizardProps = {
     customer: HttpTypes.StoreCustomer | null
     currencyCode?: string
+    regionId?: string
     paymentMethods?: PaymentProvider[]
 }
 
-export default function BuySimWizard({ customer, currencyCode = "inr", paymentMethods = [] }: BuySimWizardProps) {
+export default function BuySimWizard({ customer, currencyCode = "inr", regionId, paymentMethods = [] }: BuySimWizardProps) {
     const [step, setStep] = useState<"number" | "kyc" | "plan" | "checkout" | "success">("number")
     const [selectedNumber, setSelectedNumber] = useState<AvailableNumber | null>(null)
     const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null)
@@ -42,6 +51,8 @@ export default function BuySimWizard({ customer, currencyCode = "inr", paymentMe
         paymentMethods.find((p) => p.id === "pp_system_default")?.id ?? paymentMethods[0]?.id ?? "pp_system_default"
     )
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+    const [stripeSession, setStripeSession] = useState<StripeSession | null>(null)
+    const [stripeSessionError, setStripeSessionError] = useState<string | null>(null)
 
     // Data Hooks
     const { data: numbers, isLoading: isLoadingNumbers } = useAvailableNumbers(undefined, offset)
@@ -82,7 +93,7 @@ export default function BuySimWizard({ customer, currencyCode = "inr", paymentMe
         })
     }
 
-    const handlePurchase = () => {
+    const handlePurchase = (paymentCollectionId?: string, paymentSessionId?: string) => {
         if (!CUSTOMER_ID) {
             alert("Please log in to purchase.")
             return
@@ -94,6 +105,9 @@ export default function BuySimWizard({ customer, currencyCode = "inr", paymentMe
                 plan_id: selectedPlan!.id,
                 preferred_number: selectedNumber!.msisdn,
                 payment_method: selectedPaymentMethod === "pp_system_default" ? "manual" : selectedPaymentMethod,
+                ...(paymentCollectionId && paymentSessionId
+                    ? { payment_collection_id: paymentCollectionId, payment_session_id: paymentSessionId }
+                    : {}),
                 shipping_address: checkoutForm.shipping_address,
                 shipping_city: checkoutForm.shipping_city,
                 shipping_state: checkoutForm.shipping_state,
@@ -103,14 +117,48 @@ export default function BuySimWizard({ customer, currencyCode = "inr", paymentMe
             {
                 onSuccess: () => {
                     setIsConfirmModalOpen(false)
+                    setStripeSession(null)
                     setStep("success")
                 },
                 onError: (err) => {
                     setIsConfirmModalOpen(false)
+                    setStripeSession(null)
                     alert("Failed to purchase: " + err.message)
                 },
             }
         )
+    }
+
+    const handleProceedToPay = async () => {
+        if (!selectedPlan || !selectedNumber || !checkoutForm.shipping_address) return
+        if (isStripeLike(selectedPaymentMethod)) {
+            if (!regionId) {
+                setStripeSessionError("Region not available. Please refresh and try again.")
+                return
+            }
+            setStripeSessionError(null)
+            try {
+                const res = await telecomClient.post<{
+                    client_secret: string
+                    payment_collection_id: string
+                    payment_session_id: string
+                }>("/store/telecom/purchase-sim/create-stripe-session", {
+                    plan_id: selectedPlan.id,
+                    amount: selectedPlan.price,
+                    currency_code: currencyCode,
+                    region_id: regionId,
+                })
+                setStripeSession({
+                    client_secret: res.client_secret,
+                    payment_collection_id: res.payment_collection_id,
+                    payment_session_id: res.payment_session_id,
+                })
+            } catch (err) {
+                setStripeSessionError(err instanceof Error ? err.message : "Could not start payment.")
+            }
+        } else {
+            setIsConfirmModalOpen(true)
+        }
     }
 
     if (!customer) {
@@ -391,10 +439,13 @@ export default function BuySimWizard({ customer, currencyCode = "inr", paymentMe
                                 </div>
                             </div>
 
+                            {stripeSessionError && (
+                                <p className="text-small-regular text-red-500 mt-2">{stripeSessionError}</p>
+                            )}
                             <Button
                                 size="large"
                                 className="w-full mt-6"
-                                onClick={() => setIsConfirmModalOpen(true)}
+                                onClick={handleProceedToPay}
                                 disabled={!checkoutForm.shipping_address}
                             >
                                 Proceed to Pay
@@ -404,7 +455,31 @@ export default function BuySimWizard({ customer, currencyCode = "inr", paymentMe
                 </div>
             )}
 
-            {/* Confirmation Modal */}
+            {/* Stripe card modal */}
+            {stripeSession && selectedPlan && selectedNumber && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-ui-bg-base p-8 rounded-xl max-w-md w-full shadow-2xl">
+                        <h3 className="text-xl font-bold mb-2">Pay with card</h3>
+                        <p className="text-ui-fg-subtle mb-4">
+                            {selectedPlan.name} – {selectedNumber.msisdn}
+                        </p>
+                        <BuySimStripeCardModal
+                            clientSecret={stripeSession.client_secret}
+                            paymentCollectionId={stripeSession.payment_collection_id}
+                            paymentSessionId={stripeSession.payment_session_id}
+                            onConfirm={(paymentCollectionId, paymentSessionId) =>
+                                handlePurchase(paymentCollectionId, paymentSessionId)
+                            }
+                            onCancel={() => setStripeSession(null)}
+                            isSubmitting={isPurchasing}
+                            billingName={customer ? `${customer.first_name ?? ""} ${customer.last_name ?? ""}`.trim() || undefined : undefined}
+                            billingEmail={customer?.email}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* Confirmation Modal (manual payment) */}
             {isConfirmModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-white dark:bg-grey-90 p-8 rounded-xl max-w-md w-full shadow-2xl">
@@ -414,7 +489,7 @@ export default function BuySimWizard({ customer, currencyCode = "inr", paymentMe
                         </p>
                         <div className="flex gap-3 justify-end">
                             <Button variant="secondary" onClick={() => setIsConfirmModalOpen(false)}>Cancel</Button>
-                            <Button onClick={handlePurchase} isLoading={isPurchasing}>Confirm & Pay</Button>
+                            <Button onClick={() => handlePurchase()} isLoading={isPurchasing}>Confirm & Pay</Button>
                         </div>
                     </div>
                 </div>

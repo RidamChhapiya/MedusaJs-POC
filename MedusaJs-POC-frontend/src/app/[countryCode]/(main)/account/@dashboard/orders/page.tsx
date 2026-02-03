@@ -1,10 +1,10 @@
 import { Metadata } from "next"
 
 import OrderOverview from "@modules/account/components/order-overview"
-import { notFound } from "next/navigation"
 import { listOrders } from "@lib/data/orders"
 import Divider from "@modules/common/components/divider"
 import TransferRequestForm from "@modules/account/components/transfer-request-form"
+import { HttpTypes } from "@medusajs/types"
 
 export const metadata: Metadata = {
   title: "Orders",
@@ -12,11 +12,9 @@ export const metadata: Metadata = {
 }
 
 export default async function Orders() {
-  const orders = await listOrders()
-
-  if (!orders) {
-    notFound()
-  }
+  const orders: HttpTypes.StoreOrder[] | null = await listOrders().catch(
+    () => null
+  )
 
   return (
     <div className="w-full" data-testid="orders-page-wrapper">
@@ -28,7 +26,7 @@ export default async function Orders() {
         </p>
       </div>
       <div>
-        <OrderOverview orders={orders} />
+        <OrderOverview orders={orders ?? []} />
         <Divider className="my-16" />
         <TransferRequestForm />
       </div>

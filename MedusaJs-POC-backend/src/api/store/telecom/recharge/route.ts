@@ -1,13 +1,15 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { Modules } from "@medusajs/framework/utils"
+import { Client } from "pg"
 import TelecomCoreModuleService from "../../../../modules/telecom-core/service"
 
 /**
  * Recharge API
  * POST /store/telecom/recharge
- * 
+ *
  * Allows anyone to recharge any Nexel number
  * Validates Nexel number exists and is active
+ * Optional: payment_collection_id + payment_session_id for Stripe (after frontend confirmCardPayment)
  */
 export async function POST(req: MedusaRequest, res: MedusaResponse) {
     const telecomModule: TelecomCoreModuleService = req.scope.resolve("telecom")
@@ -16,9 +18,13 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         const {
             nexel_number,
             plan_id,
-            payment_method = "card",
+            payment_method = "manual",
+            payment_collection_id,
+            payment_session_id,
             recharge_for_self = false
         } = req.body as any
+
+        const isStripePayment = Boolean(payment_collection_id && payment_session_id)
 
         // Step 1: Verify Nexel number exists and is active
         const msisdns = await telecomModule.listMsisdnInventories({
@@ -142,50 +148,98 @@ export async function POST(req: MedusaRequest, res: MedusaResponse) {
         })
 
         // Step 6: Create Medusa Order for tracking (digital delivery)
-        let order = null
+        let order: any = null
+        const regionModule = req.scope.resolve("region")
+        const regions = await regionModule.listRegions({}, { take: 1 })
+        const region = regions[0]
+
         try {
             const { createOrderWorkflow } = await import("@medusajs/core-flows")
 
+            const items: any[] = []
             if (plan.product_id) {
                 const productModule = req.scope.resolve("product")
                 const product = await productModule.retrieve(plan.product_id, {
                     relations: ["variants"]
                 })
-
                 const variant = product.variants?.[0]
-
                 if (variant) {
-                    const { result: orderResult } = await createOrderWorkflow(req.scope).run({
-                        input: {
-                            customer_id: msisdn.customer_id,
-                            region_id: "reg_01HQZV3XFQZQZ0Z0Z0Z0Z0Z0Z0", // TODO: Get from config
-                            currency_code: "inr",
-                            items: [
-                                {
-                                    variant_id: variant.id,
-                                    quantity: 1,
-                                    metadata: {
-                                        subscription_id: subscription.id,
-                                        msisdn: nexel_number,
-                                        item_type: "recharge"
-                                    }
-                                }
-                            ],
-                            metadata: {
-                                order_type: "recharge",
-                                subscription_id: subscription.id,
-                                msisdn: nexel_number,
-                                requires_fulfillment: false, // Digital only
-                                invoice_id: invoice.id
-                            }
+                    items.push({
+                        variant_id: variant.id,
+                        quantity: 1,
+                        metadata: {
+                            subscription_id: subscription.id,
+                            msisdn: nexel_number,
+                            item_type: "recharge"
                         }
                     })
+                }
+            }
+            if (items.length === 0) {
+                items.push({
+                    title: `Recharge: ${plan.name}`,
+                    quantity: 1,
+                    unit_price: plan.price,
+                    metadata: {
+                        subscription_id: subscription.id,
+                        msisdn: nexel_number,
+                        item_type: "recharge"
+                    }
+                })
+            }
 
-                    order = orderResult
-                    console.log(`[Recharge] Created order ${order.id} for subscription ${subscription.id}`)
-                    // Emit order.placed so subscribers (X service, telecom provisioning) run
-                    const eventBus = req.scope.resolve(Modules.EVENT_BUS)
-                    await eventBus.emit({ name: "order.placed", data: { id: order.id } })
+            if (region && items.length > 0) {
+                const { result: orderResult } = await createOrderWorkflow(req.scope).run({
+                    input: {
+                        customer_id: msisdn.customer_id,
+                        region_id: region.id,
+                        currency_code: "inr",
+                        items,
+                        metadata: {
+                            order_type: "recharge",
+                            subscription_id: subscription.id,
+                            msisdn: nexel_number,
+                            requires_fulfillment: false,
+                            invoice_id: invoice.id,
+                            payment_method: isStripePayment ? "stripe" : payment_method,
+                        }
+                    }
+                })
+                order = orderResult
+                console.log(`[Recharge] Created order ${order.id} for subscription ${subscription.id}`)
+                const eventBus = req.scope.resolve(Modules.EVENT_BUS)
+                await eventBus.emit({ name: "order.placed", data: { id: order.id } })
+            }
+
+            // Stripe: authorize existing session, capture, link to order
+            if (isStripePayment && order) {
+                try {
+                    const paymentModule = req.scope.resolve("payment")
+                    await paymentModule.authorizePaymentSession(payment_session_id, {})
+                    const payments = await paymentModule.listPayments({
+                        payment_collection_id: [payment_collection_id],
+                    } as any)
+                    if (payments.length > 0) {
+                        await paymentModule.capturePayment({ payment_id: payments[0].id })
+                        const client = new Client({
+                            connectionString: process.env.DATABASE_URL,
+                        })
+                        await client.connect()
+                        await client.query(
+                            `INSERT INTO order_payment_collection (id, order_id, payment_collection_id)
+                             VALUES ($1, $2, $3)
+                             ON CONFLICT DO NOTHING`,
+                            [
+                                `ordpaycol_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                                order.id,
+                                payment_collection_id,
+                            ]
+                        )
+                        await client.end()
+                        console.log(`[Recharge] Stripe payment captured and linked to order ${order.id}`)
+                    }
+                } catch (stripeErr) {
+                    console.error("[Recharge] Stripe capture/link failed:", stripeErr)
                 }
             }
         } catch (orderError) {

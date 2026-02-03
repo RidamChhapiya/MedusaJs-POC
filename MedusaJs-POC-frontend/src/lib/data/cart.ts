@@ -38,7 +38,7 @@ export async function retrieveCart(cartId?: string, fields?: string) {
     ...(await getCacheOptions("carts")),
   }
 
-  return await sdk.client
+  const result = await sdk.client
     .fetch<HttpTypes.StoreCartResponse>(`/store/carts/${id}`, {
       method: "GET",
       query: {
@@ -50,6 +50,15 @@ export async function retrieveCart(cartId?: string, fields?: string) {
     })
     .then(({ cart }: { cart: HttpTypes.StoreCart }) => cart)
     .catch(() => null)
+
+  // If cart was already completed (order placed), treat as no cart. Do not modify cookies here
+  // (retrieveCart can run during layout render where cookie writes are not allowed).
+  // The cookie is cleared in getOrSetCart when the user next adds to cart (Server Action).
+  if (result?.completed_at) {
+    return null
+  }
+
+  return result
 }
 
 export async function getOrSetCart(countryCode: string) {
@@ -59,10 +68,18 @@ export async function getOrSetCart(countryCode: string) {
     throw new Error(`Region not found for country code: ${countryCode}`)
   }
 
-  let cart = await retrieveCart(undefined, "id,region_id")
+  let cart = await retrieveCart(undefined, "id,region_id,completed_at")
 
   const headers = {
     ...(await getAuthHeaders()),
+  }
+
+  // Completed cart: clear cookie (allowed in Server Action) and create a new cart
+  if (cart?.completed_at) {
+    await removeCartId()
+    const cartCacheTag = await getCacheTag("carts")
+    if (cartCacheTag) revalidateTag(cartCacheTag)
+    cart = null
   }
 
   if (!cart) {
@@ -220,16 +237,27 @@ export async function deleteLineItem(lineId: string) {
     ...(await getAuthHeaders()),
   }
 
-  await sdk.store.cart
-    .deleteLineItem(cartId, lineId, {}, headers)
-    .then(async () => {
+  try {
+    await sdk.store.cart
+      .deleteLineItem(cartId, lineId, {}, headers)
+      .then(async () => {
+        const cartCacheTag = await getCacheTag("carts")
+        revalidateTag(cartCacheTag)
+        const fulfillmentCacheTag = await getCacheTag("fulfillment")
+        revalidateTag(fulfillmentCacheTag)
+      })
+  } catch (err: unknown) {
+    const msg =
+      (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ??
+      (err instanceof Error ? err.message : String(err))
+    if (String(msg).toLowerCase().includes("already completed")) {
+      await removeCartId()
       const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag)
-
-      const fulfillmentCacheTag = await getCacheTag("fulfillment")
-      revalidateTag(fulfillmentCacheTag)
-    })
-    .catch(medusaError)
+      if (cartCacheTag) revalidateTag(cartCacheTag)
+      throw new Error("This cart was already used for an order. Your cart has been cleared—add items again to continue.")
+    }
+    medusaError(err)
+  }
 }
 
 export async function setShippingMethod({
@@ -403,6 +431,7 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
 
 /**
  * Places an order for a cart. If no cart ID is provided, it will use the cart ID from the cookies.
+ * Retries once after 2s on lock failure (500 / "lock") to handle transient cart lock errors.
  * @param cartId - optional - The ID of the cart to place an order for.
  * @returns The cart object if the order was successful, or null if not.
  */
@@ -417,14 +446,32 @@ export async function placeOrder(cartId?: string) {
     ...(await getAuthHeaders()),
   }
 
-  const cartRes = await sdk.store.cart
-    .complete(id, {}, headers)
-    .then(async (cartRes) => {
+  const doComplete = () =>
+    sdk.store.cart.complete(id, {}, headers).then(async (cartRes) => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
       return cartRes
     })
-    .catch(medusaError)
+
+  let cartRes: Awaited<ReturnType<typeof doComplete>> | null = null
+  try {
+    cartRes = await doComplete()
+  } catch (err: any) {
+    const isLockError =
+      err?.status === 500 ||
+      (typeof err?.message === "string" &&
+        err.message.toLowerCase().includes("lock"))
+    if (isLockError) {
+      await new Promise((r) => setTimeout(r, 2000))
+      cartRes = await doComplete().catch(medusaError)
+    } else {
+      medusaError(err)
+    }
+  }
+
+  if (!cartRes) {
+    return null
+  }
 
   if (cartRes?.type === "order") {
     const countryCode =
@@ -485,4 +532,18 @@ export async function listCartOptions() {
     headers,
     cache: "force-cache",
   })
+}
+
+/**
+ * Clears the current cart cookie and redirects to the store.
+ * Use when the cart is in a bad state (e.g. "Could not delete all payment sessions").
+ * @param formData - optional; if from a form, pass country_code as entry "country_code"
+ */
+export async function clearCartAndGoToStore(formData?: FormData) {
+  const countryCode =
+    (formData?.get("country_code") as string) || "in"
+  await removeCartId()
+  const cartCacheTag = await getCacheTag("carts")
+  revalidateTag(cartCacheTag)
+  redirect(`/${countryCode}/store`)
 }
