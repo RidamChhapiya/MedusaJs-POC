@@ -1,11 +1,36 @@
 "use server"
 
+import { cache } from "react"
 import { sdk } from "@lib/config"
 import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { getRegion, retrieveRegion } from "./regions"
+
+/**
+ * Request-deduplicated fetch for a single product by handle.
+ * Use from product page and generateMetadata to avoid fetching the same product twice.
+ */
+export const getProductByHandle = cache(
+  async (
+    countryCode: string,
+    handle: string
+  ): Promise<{
+    region: HttpTypes.StoreRegion | null
+    product: HttpTypes.StoreProduct | null
+  }> => {
+    const [region, productResult] = await Promise.all([
+      getRegion(countryCode),
+      listProducts({
+        countryCode,
+        queryParams: { handle },
+      }),
+    ])
+    const product = productResult.response.products[0] ?? null
+    return { region, product }
+  }
+)
 
 export const listProducts = async ({
   pageParam = 1,
@@ -30,16 +55,16 @@ export const listProducts = async ({
   const _pageParam = Math.max(pageParam, 1)
   const offset = _pageParam === 1 ? 0 : (_pageParam - 1) * limit
 
-  // Map country codes to Sales Channel IDs
+  // Map country codes to Sales Channel IDs (use lowercase for comparison)
   // This ensures we only fetch products available in the specific region's sales channel
-  // Defaults to undefined (which usually means "all channels available to the API key" or "default channel")
   let salesChannelId: string | undefined
+  const code = countryCode?.toLowerCase()
 
-  if (countryCode === "fr") {
-    salesChannelId = process.env.NEXT_PUBLIC_SC_ID_FR
+  if (code === "fr") {
+    salesChannelId = process.env.NEXT_PUBLIC_SC_ID_FR?.trim()
   } else {
-    // Default to India for 'in' or any other unidentified region/fallback
-    salesChannelId = process.env.NEXT_PUBLIC_SC_ID_IN
+    // Default to India for 'in' or any other region/fallback
+    salesChannelId = process.env.NEXT_PUBLIC_SC_ID_IN?.trim()
   }
 
   // Ensure we ALWAYS send a sales_channel_id to avoid ambiguous inventory errors
@@ -82,8 +107,10 @@ export const listProducts = async ({
           limit,
           offset,
           region_id: region?.id,
+          // Omit +variants.inventory_quantity to avoid "Inventory availability cannot be calculated"
+          // when publishable key has no single sales channel. Add it back once the key has one sales channel in Admin.
           fields:
-            "*variants.calculated_price,+variants.inventory_quantity,*variants.images,+metadata,+tags,*categories",
+            "*variants.calculated_price,*variants.images,+metadata,+tags,*categories",
           ...queryParams,
           ...salesChannelQuery,
         },

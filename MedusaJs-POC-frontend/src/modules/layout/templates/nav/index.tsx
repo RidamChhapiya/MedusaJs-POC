@@ -3,12 +3,17 @@ import { Suspense } from "react"
 import { listRegions } from "@lib/data/regions"
 import { listLocales } from "@lib/data/locales"
 import { getLocale } from "@lib/data/locale-actions"
-import { StoreRegion } from "@medusajs/types"
+import { StoreCart, StoreRegion } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import CartButton from "@modules/layout/components/cart-button"
 import ClientNav from "./client-nav"
 
-export default async function Nav() {
+type NavProps = {
+  /** Cart from layout; when provided, CartButton skips fetching again */
+  cart?: StoreCart | null
+}
+
+export default async function Nav({ cart }: NavProps) {
   const [regions, locales, currentLocale] = await Promise.all([
     listRegions().then((regions: StoreRegion[]) => regions),
     listLocales(),
@@ -32,7 +37,7 @@ export default async function Nav() {
             </LocalizedClientLink>
           }
         >
-          <CartButton />
+          <CartButton cart={cart} />
         </Suspense>
       }
     />

@@ -23,7 +23,38 @@ export default async function Footer() {
               Medusa Store
             </LocalizedClientLink>
           </div>
-          <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-3">
+          <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-4 w-full xsmall:w-auto max-w-4xl">
+            <div className="flex flex-col gap-y-2" data-testid="footer-support-account">
+              <span className="txt-small-plus txt-ui-fg-base dark:text-grey-10">
+                Support & account
+              </span>
+              <ul className="grid grid-cols-1 gap-y-2 text-ui-fg-subtle dark:text-grey-30 txt-small">
+                <li>
+                  <LocalizedClientLink
+                    href="/my-numbers"
+                    className="hover:text-ui-fg-base dark:hover:text-grey-10 text-grey-70 dark:text-grey-30"
+                  >
+                    My Numbers
+                  </LocalizedClientLink>
+                </li>
+                <li>
+                  <LocalizedClientLink
+                    href="/customer-service"
+                    className="hover:text-ui-fg-base dark:hover:text-grey-10 text-grey-70 dark:text-grey-30"
+                  >
+                    Customer Support
+                  </LocalizedClientLink>
+                </li>
+                <li>
+                  <LocalizedClientLink
+                    href="/account"
+                    className="hover:text-ui-fg-base dark:hover:text-grey-10 text-grey-70 dark:text-grey-30"
+                  >
+                    Account
+                  </LocalizedClientLink>
+                </li>
+              </ul>
+            </div>
             {productCategories && productCategories?.length > 0 && (
               <div className="flex flex-col gap-y-2">
                 <span className="txt-small-plus txt-ui-fg-base dark:text-grey-10">

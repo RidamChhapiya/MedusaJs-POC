@@ -105,6 +105,11 @@ export default function ProductActions({
       return true
     }
 
+    // If inventory_quantity was not fetched (e.g. omitted for sales-channel compatibility), allow add to cart
+    if (selectedVariant?.manage_inventory && selectedVariant?.inventory_quantity === undefined) {
+      return true
+    }
+
     // If there is inventory available, we can add to cart
     if (
       selectedVariant?.manage_inventory &&
@@ -157,6 +162,11 @@ export default function ProductActions({
                 )
               })}
               <Divider />
+              {!product.options?.every((opt) => options[opt.id] !== undefined) && (
+                <p className="text-small-regular text-ui-fg-muted dark:text-grey-40">
+                  Select options above to continue
+                </p>
+              )}
             </div>
           )}
         </div>

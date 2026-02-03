@@ -1,5 +1,6 @@
 "use server"
 
+import { cache } from "react"
 import { sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
@@ -15,7 +16,8 @@ import {
   setAuthToken,
 } from "./cookies"
 
-export const retrieveCustomer =
+/** Request-deduplicated: multiple callers in the same request (e.g. layout + account page) share one result */
+export const retrieveCustomer = cache(
   async (): Promise<HttpTypes.StoreCustomer | null> => {
     const authHeaders = await getAuthHeaders()
 
@@ -42,7 +44,7 @@ export const retrieveCustomer =
       .then(({ customer }) => customer)
       .catch(() => null)
   }
-//cache: "no-cache",
+)
 export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
   const headers = {
     ...(await getAuthHeaders()),

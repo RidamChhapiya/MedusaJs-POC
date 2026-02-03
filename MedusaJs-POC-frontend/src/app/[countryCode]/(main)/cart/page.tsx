@@ -10,12 +10,17 @@ export const metadata: Metadata = {
 }
 
 export default async function Cart() {
-  const cart = await retrieveCart().catch((error) => {
-    console.error(error)
-    return notFound()
-  })
+  const [cart, customer] = await Promise.all([
+    retrieveCart().catch((error) => {
+      console.error(error)
+      return null
+    }),
+    retrieveCustomer(),
+  ])
 
-  const customer = await retrieveCustomer()
+  if (!cart) {
+    notFound()
+  }
 
   return <CartTemplate cart={cart} customer={customer} />
 }

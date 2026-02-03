@@ -6,13 +6,17 @@ import Product from "../product-preview"
 type RelatedProductsProps = {
   product: HttpTypes.StoreProduct
   countryCode: string
+  /** When provided (e.g. from product page), skips fetching region again */
+  region?: HttpTypes.StoreRegion | null
 }
 
 export default async function RelatedProducts({
   product,
   countryCode,
+  region: regionProp,
 }: RelatedProductsProps) {
-  const region = await getRegion(countryCode)
+  const region =
+    regionProp ?? (await getRegion(countryCode))
 
   if (!region) {
     return null

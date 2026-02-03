@@ -16,8 +16,10 @@ export const metadata: Metadata = {
 }
 
 export default async function Profile() {
-  const customer = await retrieveCustomer()
-  const regions = await listRegions()
+  const [customer, regions] = await Promise.all([
+    retrieveCustomer(),
+    listRegions(),
+  ])
 
   if (!customer || !regions) {
     notFound()
@@ -51,4 +53,3 @@ export default async function Profile() {
 const Divider = () => {
   return <div className="w-full h-px bg-gray-200" />
 }
-;``

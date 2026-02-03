@@ -35,7 +35,8 @@ const CartDropdown = ({
       return acc + item.quantity
     }, 0) || 0
 
-  const subtotal = cartState?.subtotal ?? 0
+  // Prefer item_subtotal (items after promotions); fallback to subtotal (items + shipping after promotions)
+  const subtotal = cartState?.item_subtotal ?? cartState?.subtotal ?? 0
   const itemRef = useRef<number>(totalItems || 0)
 
   const timedOpen = () => {

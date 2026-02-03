@@ -1,5 +1,6 @@
 "use server"
 
+import { cache } from "react"
 import { sdk } from "@lib/config"
 import medusaError from "@lib/util/medusa-error"
 import { HttpTypes } from "@medusajs/types"
@@ -14,17 +15,26 @@ import {
   setCartId,
 } from "./cookies"
 import { getRegion } from "./regions"
-import { getLocale } from "@lib/data/locale-actions"
+
+function getSalesChannelIdForCountry(countryCode: string): string | undefined {
+  const code = countryCode?.toLowerCase()
+  if (code === "fr") return process.env.NEXT_PUBLIC_SC_ID_FR?.trim()
+  return process.env.NEXT_PUBLIC_SC_ID_IN?.trim()
+}
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
+ * Request-deduplicated: same (cartId, fields) in one request returns the same promise.
  * @param cartId - optional - The ID of the cart to retrieve.
  * @returns The cart object if found, or null if not found.
  */
-export async function retrieveCart(cartId?: string, fields?: string) {
+export const retrieveCart = cache(async function retrieveCart(
+  cartId?: string,
+  fields?: string
+) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, +subtotal, +item_subtotal, +total"
 
   if (!id) {
     return null
@@ -59,16 +69,19 @@ export async function retrieveCart(cartId?: string, fields?: string) {
   }
 
   return result
-}
+})
 
 export async function getOrSetCart(countryCode: string) {
-  const region = await getRegion(countryCode)
+  const [region, initialCart] = await Promise.all([
+    getRegion(countryCode),
+    retrieveCart(undefined, "id,region_id,completed_at"),
+  ])
 
   if (!region) {
     throw new Error(`Region not found for country code: ${countryCode}`)
   }
 
-  let cart = await retrieveCart(undefined, "id,region_id,completed_at")
+  let cart = initialCart
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -83,12 +96,16 @@ export async function getOrSetCart(countryCode: string) {
   }
 
   if (!cart) {
-    const locale = await getLocale()
-    const cartResp = await sdk.store.cart.create(
-      { region_id: region.id, locale: locale || undefined },
-      {},
-      headers
-    )
+    // Backend CreateCart schema is .strict() and only allows: region_id, shipping_address,
+    // billing_address, email, currency_code, items, sales_channel_id, promo_codes, metadata.
+    // Do not send "locale" or other keys or validation returns 400.
+    const salesChannelId = getSalesChannelIdForCountry(countryCode)
+    const createBody: { region_id: string; sales_channel_id?: string } = {
+      region_id: region.id,
+    }
+    if (salesChannelId) createBody.sales_channel_id = salesChannelId
+
+    const cartResp = await sdk.store.cart.create(createBody, {}, headers)
     cart = cartResp.cart
 
     await setCartId(cart.id)
@@ -140,8 +157,15 @@ export async function addToCart({
   quantity: number
   countryCode: string
 }) {
-  if (!variantId) {
+  const trimmedVariantId =
+    variantId != null ? String(variantId).trim() : ""
+  if (!trimmedVariantId) {
     throw new Error("Missing variant ID when adding to cart")
+  }
+
+  const qty = Math.max(1, Math.floor(Number(quantity)) || 1)
+  if (!Number.isFinite(qty) || qty < 1) {
+    throw new Error("Quantity must be at least 1")
   }
 
   const cart = await getOrSetCart(countryCode)
@@ -154,39 +178,21 @@ export async function addToCart({
     ...(await getAuthHeaders()),
   }
 
-  try {
-    await sdk.store.cart.createLineItem(
-      cart.id,
-      {
-        variant_id: variantId,
-        quantity,
-      },
-      {},
-      headers
-    )
-    
-    const cartCacheTag = await getCacheTag("carts")
-    revalidateTag(cartCacheTag)
-
-    const fulfillmentCacheTag = await getCacheTag("fulfillment")
-    revalidateTag(fulfillmentCacheTag)
-  } catch (error: any) {
-    const errorDetails: Record<string, any> = {
-      error,
-      errorType: typeof error,
-      cartId: cart.id,
-      variantId,
-      quantity,
-    }
-    
-    if (error && typeof error === 'object') {
-      if ('message' in error) errorDetails.errorMessage = error.message
-      if ('stack' in error) errorDetails.errorStack = error.stack
-    }
-    
-    console.error("[addToCart] Error details:", errorDetails)
-    medusaError(error)
+  const body: { variant_id: string; quantity: number } = {
+    variant_id: trimmedVariantId,
+    quantity: qty,
   }
+
+  await sdk.store.cart
+    .createLineItem(cart.id, body, {}, headers)
+    .then(async () => {
+      const cartCacheTag = await getCacheTag("carts")
+      revalidateTag(cartCacheTag)
+
+      const fulfillmentCacheTag = await getCacheTag("fulfillment")
+      revalidateTag(fulfillmentCacheTag)
+    })
+    .catch(medusaError)
 }
 
 export async function updateLineItem({
