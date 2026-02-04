@@ -1,9 +1,11 @@
 import { getBaseURL } from "@lib/util/env"
 import { Metadata } from "next"
+import { Suspense } from "react"
 import { ThemeProvider } from "@lib/context/theme-context"
 import { NavLoadingProvider } from "@lib/context/nav-loading-context"
 import { LoadingBar } from "@modules/common/components/loading-bar"
 import QueryProvider from "@lib/context/query-provider"
+import LayoutFallback from "./layout-fallback"
 import "styles/globals.css"
 
 export const metadata: Metadata = {
@@ -44,14 +46,16 @@ export default function RootLayout(props: { children: React.ReactNode }) {
         />
       </head>
       <body suppressHydrationWarning className="bg-white dark:bg-grey-80 text-grey-90 dark:text-grey-10">
-        <NavLoadingProvider>
-          <LoadingBar />
-          <QueryProvider>
-            <ThemeProvider>
-              <main className="relative bg-white dark:bg-grey-80 min-h-screen">{props.children}</main>
-            </ThemeProvider>
-          </QueryProvider>
-        </NavLoadingProvider>
+        <Suspense fallback={<LayoutFallback>{props.children}</LayoutFallback>}>
+          <NavLoadingProvider>
+            <LoadingBar />
+            <QueryProvider>
+              <ThemeProvider>
+                <main className="relative bg-white dark:bg-grey-80 min-h-screen">{props.children}</main>
+              </ThemeProvider>
+            </QueryProvider>
+          </NavLoadingProvider>
+        </Suspense>
       </body>
     </html>
   )

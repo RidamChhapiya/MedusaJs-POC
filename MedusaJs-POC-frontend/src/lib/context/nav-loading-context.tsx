@@ -11,6 +11,12 @@ interface NavLoadingContextType {
 
 const NavLoadingContext = createContext<NavLoadingContextType | null>(null)
 
+const FALLBACK_VALUE: NavLoadingContextType = {
+    loading: false,
+    startLoading: () => {},
+    stopLoading: () => {},
+}
+
 export const useNavLoading = () => {
     const context = useContext(NavLoadingContext)
     if (!context) {
@@ -18,6 +24,11 @@ export const useNavLoading = () => {
     }
     return context
 }
+
+/** Use in Suspense fallback so children (e.g. 404) can call useNavLoading without the real provider (which uses useSearchParams). */
+export const FallbackNavLoadingProvider = ({ children }: { children: React.ReactNode }) => (
+    <NavLoadingContext.Provider value={FALLBACK_VALUE}>{children}</NavLoadingContext.Provider>
+)
 
 export const NavLoadingProvider = ({ children }: { children: React.ReactNode }) => {
     const [loading, setLoading] = useState(false)

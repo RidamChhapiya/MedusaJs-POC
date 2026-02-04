@@ -23,8 +23,15 @@ This doc confirms why the current setup fixes the errors you saw.
 ## Render settings to use
 
 - **Root Directory:** `MedusaJs-POC-backend` (so build and start both run in the backend folder).
-- **Build Command:** `npm install && npm run build`
+- **Build Command:** `NODE_OPTIONS=--max-old-space-size=1024 npm install && npm run build`  
+  (gives Node a 1 GB heap during install/build so it doesn’t hit “JavaScript heap out of memory”.)
 - **Start Command:** `npm run start`
-- **Instance type:** If you still hit OOM after this, increase to 1 GB; the app itself no longer does a second install at start.
+
+### If the build still runs out of memory
+
+1. **Increase build memory** – In Render dashboard: your service → **Environment** → add or set **NODE_OPTIONS** = `--max-old-space-size=1024` (or `2048` if you have more build RAM).
+2. **Use the same in the Build Command** – If the env var isn’t applied during build, keep the build command as:  
+   `NODE_OPTIONS=--max-old-space-size=1024 npm install && npm run build`
+3. **Upgrade build resources** – If your plan limits build to 512 MB, upgrade so the build has at least 1 GB; then the above NODE_OPTIONS is safe.
 
 You do not need to set `PORT` in Render; it is set automatically.
